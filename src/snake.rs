@@ -50,6 +50,8 @@ pub struct Snake {
     tiles: Vec<SpriteVisual>,
     selection_visual: SpriteVisual,
 
+    snakes: Vec<SpriteVisual>,
+
     game_board_width: i32,
     game_board_height: i32,
     tile_size: Vector2,
@@ -112,6 +114,7 @@ impl Snake {
             game_board: game_board,
             tiles: Vec::new(),
             selection_visual: selection_visual,
+            snakes: Vec::new(),
 
             game_board_width: 0,
             game_board_height: 0,
@@ -269,6 +272,34 @@ impl Snake {
                 self.tiles.push(visual);
                 self.mine_states.push(MineState::Empty);
             }
+        }
+
+        // Head :
+        let mut index: u32 = 0;
+        loop {
+            if index == 3 {
+                break;
+            }
+            index = index + 1;
+            let head_visual = self.compositor.create_sprite_visual()?;
+            let head_color_brush = self
+                .compositor
+                .create_color_brush_with_color(Colors::pink()?)?;
+            head_visual.set_brush(head_color_brush)?;
+            head_visual.set_offset(Vector3::from_vector2(
+                &self.margin / 2.0
+                    + (&self.tile_size + &self.margin)
+                        * Vector2 {
+                            x: index as f32 + self.game_board_width as f32 / 2.0 - 1.0,
+                            y: self.game_board_height as f32 / 2.0 - 1.0,
+                        },
+                0.0,
+            ))?;
+            head_visual.set_is_visible(true)?;
+            head_visual.set_size(&self.tile_size)?;
+            head_visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
+            self.game_board.children()?.insert_at_top(&head_visual)?;
+            self.snakes.push(head_visual);
         }
 
         self.mine_animation_playing = false;
