@@ -19,6 +19,10 @@ mod window_target;
 
 use interop::{create_dispatcher_queue_controller_for_current_thread, ro_initialize, RoInitType};
 use snake::Snake;
+use std::{
+    sync::{Arc, Mutex},
+    thread, time,
+};
 use window_target::CompositionDesktopWindowTargetSource;
 use winit::{
     event::{ElementState, Event, MouseButton, WindowEvent},
@@ -48,47 +52,61 @@ fn run() -> winrt::Result<()> {
         x: window_size.width as f32,
         y: window_size.height as f32,
     };
-    let mut game = Snake::new(&root, &window_size)?;
-
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                window_id,
-            } if window_id == window.id() => *control_flow = ControlFlow::Exit,
-            Event::WindowEvent {
-                event: WindowEvent::Resized(size),
-                ..
-            } => {
-                let size = Vector2 {
-                    x: size.width as f32,
-                    y: size.height as f32,
-                };
-                game.on_parent_size_changed(&size).unwrap();
+    let game = Snake::new(&root, &window_size)?;
+    let arc = Arc::new(Mutex::new(game));
+    {
+        let arc = arc.clone();
+        thread::spawn(move || loop {
+            {
+                let mut game = arc.lock().unwrap();
+                game.tick();
             }
-            Event::WindowEvent {
-                event: WindowEvent::CursorMoved { position, .. },
-                ..
-            } => {
-                let point = Vector2 {
-                    x: position.x as f32,
-                    y: position.y as f32,
-                };
-                game.on_pointer_moved(&point).unwrap();
-            }
-            Event::WindowEvent {
-                event: WindowEvent::MouseInput { state, button, .. },
-                ..
-            } => {
-                if state == ElementState::Pressed {
-                    game.on_pointer_pressed(button == MouseButton::Right, false)
-                        .unwrap();
+            thread::sleep(time::Duration::from_secs(1));
+        });
+    }
+    {
+        let arc = arc.clone();
+        event_loop.run(move |event, _, control_flow| {
+            *control_flow = ControlFlow::Wait;
+            let mut game = arc.lock().unwrap();
+            match event {
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    window_id,
+                } if window_id == window.id() => *control_flow = ControlFlow::Exit,
+                Event::WindowEvent {
+                    event: WindowEvent::Resized(size),
+                    ..
+                } => {
+                    let size = Vector2 {
+                        x: size.width as f32,
+                        y: size.height as f32,
+                    };
+                    game.on_parent_size_changed(&size).unwrap();
                 }
+                Event::WindowEvent {
+                    event: WindowEvent::CursorMoved { position, .. },
+                    ..
+                } => {
+                    let point = Vector2 {
+                        x: position.x as f32,
+                        y: position.y as f32,
+                    };
+                    game.on_pointer_moved(&point).unwrap();
+                }
+                Event::WindowEvent {
+                    event: WindowEvent::MouseInput { state, button, .. },
+                    ..
+                } => {
+                    if state == ElementState::Pressed {
+                        game.on_pointer_pressed(button == MouseButton::Right, false)
+                            .unwrap();
+                    }
+                }
+                _ => (),
             }
-            _ => (),
-        }
-    });
+        });
+    }
 }
 
 fn main() {

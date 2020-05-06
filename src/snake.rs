@@ -70,6 +70,8 @@ pub struct Snake {
     game_over: bool,
 }
 
+unsafe impl Send for Snake {}
+
 impl Snake {
     pub fn new(parent_visual: &ContainerVisual, parent_size: &Vector2) -> winrt::Result<Self> {
         let compositor = parent_visual.compositor()?;
@@ -138,6 +140,10 @@ impl Snake {
         result.on_parent_size_changed(parent_size)?;
 
         Ok(result)
+    }
+
+    pub fn tick(&mut self) {
+        println!("tick");
     }
 
     pub fn on_pointer_moved(&mut self, point: &Vector2) -> winrt::Result<()> {
