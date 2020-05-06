@@ -103,6 +103,13 @@ fn run() -> winrt::Result<()> {
                             .unwrap();
                     }
                 }
+                Event::WindowEvent {
+                    event: WindowEvent::KeyboardInput { input, .. },
+                    ..
+                } if input.state == ElementState::Released => match input.virtual_keycode {
+                    Some(p) => game.key_press(p),
+                    None => println!("No value."),
+                },
                 _ => (),
             }
         });

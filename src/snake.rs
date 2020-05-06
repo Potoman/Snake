@@ -16,6 +16,7 @@ use crate::windows::{
 use rand::distributions::{Distribution, Uniform};
 use std::collections::VecDeque;
 use std::time::Duration;
+use winit::event::VirtualKeyCode;
 use winrt::TryInto;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -68,9 +69,18 @@ pub struct Snake {
 
     mine_animation_playing: bool,
     game_over: bool,
+    snake_direction: SnakeDirection,
 }
 
 unsafe impl Send for Snake {}
+
+#[derive(Debug, PartialEq)]
+pub enum SnakeDirection {
+    UP,
+    DOWN,
+    RIGHT,
+    LEFT,
+}
 
 impl Snake {
     pub fn new(parent_visual: &ContainerVisual, parent_size: &Vector2) -> winrt::Result<Self> {
@@ -134,6 +144,7 @@ impl Snake {
 
             mine_animation_playing: false,
             game_over: false,
+            snake_direction: SnakeDirection::RIGHT,
         };
 
         result.new_game(16, 16, 40)?;
@@ -144,6 +155,36 @@ impl Snake {
 
     pub fn tick(&mut self) {
         println!("tick");
+    }
+
+    pub fn key_press(&mut self, key: VirtualKeyCode) {
+        match key {
+            VirtualKeyCode::Z => {
+                if self.snake_direction != SnakeDirection::DOWN {
+                    self.set_snake_direction(SnakeDirection::UP);
+                }
+            }
+            VirtualKeyCode::Q => {
+                if self.snake_direction != SnakeDirection::RIGHT {
+                    self.set_snake_direction(SnakeDirection::LEFT);
+                }
+            }
+            VirtualKeyCode::S => {
+                if self.snake_direction != SnakeDirection::UP {
+                    self.set_snake_direction(SnakeDirection::DOWN);
+                }
+            }
+            VirtualKeyCode::D => {
+                if self.snake_direction != SnakeDirection::LEFT {
+                    self.set_snake_direction(SnakeDirection::RIGHT);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn set_snake_direction(&mut self, direction: SnakeDirection) {
+        self.snake_direction = direction;
     }
 
     pub fn on_pointer_moved(&mut self, point: &Vector2) -> winrt::Result<()> {
