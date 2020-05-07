@@ -61,7 +61,7 @@ fn run() -> winrt::Result<()> {
                 let mut game = arc.lock().unwrap();
                 game.tick();
             }
-            thread::sleep(time::Duration::from_secs(1));
+            thread::sleep(time::Duration::from_millis(100));
         });
     }
     {
