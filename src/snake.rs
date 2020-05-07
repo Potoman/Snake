@@ -155,6 +155,7 @@ impl Snake {
         };
 
         result.new_game(16, 16, 40)?;
+        result.create_snake();
         result.on_parent_size_changed(parent_size)?;
 
         Ok(result)
