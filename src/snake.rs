@@ -75,6 +75,7 @@ pub struct Snake {
     mine_animation_playing: bool,
     game_over: bool,
     snake_direction: SnakeDirection,
+    snake_map: Vec<bool>,
 }
 
 unsafe impl Send for Snake {}
@@ -150,6 +151,7 @@ impl Snake {
             mine_animation_playing: false,
             game_over: false,
             snake_direction: SnakeDirection::RIGHT,
+            snake_map: Vec::new(),
         };
 
         result.new_game(16, 16, 40)?;
@@ -164,6 +166,7 @@ impl Snake {
             Ok(()) => {}
             _ => {
                 self.new_game(16, 16, 40);
+                self.create_snake();
             }
         }
     }
@@ -171,6 +174,9 @@ impl Snake {
     fn move_snake(&mut self) -> Result<(), ()> {
         let x: u32;
         let y: u32;
+        if self.snakes.len() == 0 {
+            return Err(());
+        }
         let head = &self.snakes[self.snakes.len() - 1];
         match self.snake_direction {
             SnakeDirection::DOWN => {
@@ -207,7 +213,13 @@ impl Snake {
         match &self.snakes.pop_front() {
             Some(tail) => {
                 let index = self.compute_index_from_u32(tail.x, tail.y);
-                self.set_tile_to_pink(index);
+                match self.set_tile_to_blue(index) {
+                    Ok(()) => {}
+                    _ => {
+                        return Err(());
+                    }
+                }
+                self.snake_map[index] = false;
             }
             _ => {
                 return Err(());
@@ -226,7 +238,7 @@ impl Snake {
         return Ok(());
     }
 
-    fn set_tile_to_pink(&mut self, index: usize) -> winrt::Result<()> {
+    fn set_tile_to_blue(&mut self, index: usize) -> winrt::Result<()> {
         let visual = &self.tiles[index];
         visual.set_brush(
             self.compositor
@@ -358,15 +370,33 @@ impl Snake {
         Ok(())
     }
 
-    fn new_snake_tile(&mut self, x: u32, y: u32) -> winrt::Result<SnakeTile> {
+    fn new_snake_tile(&mut self, x: u32, y: u32) -> Result<SnakeTile, ()> {
         let index = self.compute_index_from_u32(x, y);
+
+        if self.snake_map[index] {
+            return Err(());
+        }
+
+        self.snake_map[index] = true;
+
+        match self.set_tile_color_to_pink(index) {
+            Ok(()) => {}
+            _ => {
+                return Err(());
+            }
+        }
+
+        let snake_tile = SnakeTile { x: x, y: y };
+        return Ok(snake_tile);
+    }
+
+    fn set_tile_color_to_pink(&mut self, index: usize) -> winrt::Result<()> {
         let visual = &self.tiles[index];
         visual.set_brush(
             self.compositor
                 .create_color_brush_with_color(Colors::pink()?)?,
         )?;
-        let snake_tile = SnakeTile { x: x, y: y };
-        Ok(snake_tile)
+        Ok(())
     }
 
     fn new_game(&mut self, board_width: i32, board_height: i32, mines: i32) -> winrt::Result<()> {
@@ -410,20 +440,13 @@ impl Snake {
             }
         }
 
-        // Head :
-        let mut index: u32 = 0;
-        loop {
-            if index == 3 {
-                break;
+        self.snake_map.clear();
+        for _x in 0..self.game_board_width {
+            for _y in 0..self.game_board_height {
+                self.snake_map.push(false);
             }
-            index = index + 1;
-            let x: u32 = index + self.game_board_width as u32 / 2 - 1;
-            let y: u32 = 5;
-
-            let snake_tile = self.new_snake_tile(x, y)?;
-
-            self.snakes.push_back(snake_tile);
         }
+        self.snakes.clear();
 
         self.mine_animation_playing = false;
         self.game_over = false;
@@ -438,6 +461,23 @@ impl Snake {
 
         self.snake_direction = SnakeDirection::RIGHT;
 
+        Ok(())
+    }
+
+    fn create_snake(&mut self) -> Result<(), ()> {
+        // Head :
+        let mut index: u32 = 0;
+        loop {
+            if index == 3 {
+                break;
+            }
+            index = index + 1;
+            let x: u32 = index + self.game_board_width as u32 / 2 - 1;
+            let y: u32 = 5;
+            let tile = self.new_snake_tile(x, y)?;
+            self.snakes.push_back(tile);
+            println!("grow snake");
+        }
         Ok(())
     }
 
