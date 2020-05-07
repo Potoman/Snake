@@ -161,38 +161,43 @@ impl Snake {
 
     pub fn tick(&mut self) {
         println!("tick");
-        self.move_snake();
+        match self.move_snake() {
+            Ok(()) => {}
+            _ => {
+                self.new_game(16, 16, 40);
+            }
+        }
     }
 
-    fn move_snake(&mut self) {
+    fn move_snake(&mut self) -> Result<(), ()> {
         let x: u32;
         let y: u32;
         let head = &self.snakes[self.snakes.len() - 1];
         match self.snake_direction {
             SnakeDirection::DOWN => {
                 if head.y == self.game_board_height as u32 - 1 {
-                    return;
+                    return Err(());
                 }
                 x = head.x;
                 y = head.y + 1;
             }
             SnakeDirection::LEFT => {
                 if head.x == 0 {
-                    return;
+                    return Err(());
                 }
                 x = head.x - 1;
                 y = head.y;
             }
             SnakeDirection::RIGHT => {
                 if head.x == self.game_board_width as u32 - 1 {
-                    return;
+                    return Err(());
                 }
                 x = head.x + 1;
                 y = head.y;
             }
             SnakeDirection::UP => {
                 if head.y == 0 {
-                    return;
+                    return Err(());
                 }
                 x = head.x;
                 y = head.y - 1;
@@ -201,8 +206,11 @@ impl Snake {
         match self.new_snake_tile(x, y) {
             Ok(tile) => {
                 self.snakes.push(tile);
+                return Ok(());
             }
-            _ => {}
+            _ => {
+                return Err(());
+            }
         }
     }
 
@@ -423,6 +431,8 @@ impl Snake {
         self.current_selection_y = -1;
 
         self.update_board_scale(&self.parent_size.clone())?;
+
+        self.snake_direction = SnakeDirection::RIGHT;
 
         Ok(())
     }
