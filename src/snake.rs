@@ -44,7 +44,6 @@ enum MineGenerationState {
 }
 
 struct SnakeTile {
-    tile: SpriteVisual,
     x: u32,
     y: u32,
 }
@@ -338,30 +337,13 @@ impl Snake {
     }
 
     fn new_snake_tile(&mut self, x: u32, y: u32) -> winrt::Result<SnakeTile> {
-        let head_visual = self.compositor.create_sprite_visual()?;
-        let head_color_brush = self
-            .compositor
-            .create_color_brush_with_color(Colors::pink()?)?;
-        head_visual.set_brush(head_color_brush)?;
-        head_visual.set_offset(Vector3::from_vector2(
-            &self.margin / 2.0
-                + (&self.tile_size + &self.margin)
-                    * Vector2 {
-                        x: x as f32,
-                        y: y as f32,
-                    },
-            0.0,
-        ))?;
-        head_visual.set_is_visible(true)?;
-        head_visual.set_size(&self.tile_size)?;
-        head_visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
-        self.game_board.children()?.insert_at_top(&head_visual)?;
-
-        let snake_tile = SnakeTile {
-            tile: head_visual,
-            x: x,
-            y: y,
-        };
+        let index = self.compute_index_from_u32(x, y);
+        let visual = &self.tiles[index];
+        visual.set_brush(
+            self.compositor
+                .create_color_brush_with_color(Colors::pink()?)?,
+        )?;
+        let snake_tile = SnakeTile { x: x, y: y };
         Ok(snake_tile)
     }
 
@@ -618,6 +600,10 @@ impl Snake {
                 self.neighbor_counts.push(count);
             }
         }
+    }
+
+    fn compute_index_from_u32(&self, x: u32, y: u32) -> usize {
+        (x * self.game_board_height as u32 + y) as usize
     }
 
     fn compute_index(&self, x: i32, y: i32) -> usize {
