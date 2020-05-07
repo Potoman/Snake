@@ -56,7 +56,7 @@ pub struct Snake {
     tiles: Vec<SpriteVisual>,
     selection_visual: SpriteVisual,
 
-    snakes: Vec<SnakeTile>,
+    snakes: VecDeque<SnakeTile>,
 
     game_board_width: i32,
     game_board_height: i32,
@@ -131,7 +131,7 @@ impl Snake {
             game_board: game_board,
             tiles: Vec::new(),
             selection_visual: selection_visual,
-            snakes: Vec::new(),
+            snakes: VecDeque::new(),
 
             game_board_width: 0,
             game_board_height: 0,
@@ -202,15 +202,37 @@ impl Snake {
                 y = head.y - 1;
             }
         }
-        match self.new_snake_tile(x, y) {
-            Ok(tile) => {
-                self.snakes.push(tile);
-                return Ok(());
+
+        // Remove tail :
+        match &self.snakes.pop_front() {
+            Some(tail) => {
+                let index = self.compute_index_from_u32(tail.x, tail.y);
+                self.set_tile_to_pink(index);
             }
             _ => {
                 return Err(());
             }
         }
+
+        // Add head :
+        match self.new_snake_tile(x, y) {
+            Ok(tile) => {
+                self.snakes.push_back(tile);
+            }
+            _ => {
+                return Err(());
+            }
+        }
+        return Ok(());
+    }
+
+    fn set_tile_to_pink(&mut self, index: usize) -> winrt::Result<()> {
+        let visual = &self.tiles[index];
+        visual.set_brush(
+            self.compositor
+                .create_color_brush_with_color(Colors::blue()?)?,
+        )?;
+        Ok(())
     }
 
     pub fn key_press(&mut self, key: VirtualKeyCode) {
@@ -400,7 +422,7 @@ impl Snake {
 
             let snake_tile = self.new_snake_tile(x, y)?;
 
-            self.snakes.push(snake_tile);
+            self.snakes.push_back(snake_tile);
         }
 
         self.mine_animation_playing = false;
