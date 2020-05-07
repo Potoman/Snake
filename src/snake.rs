@@ -477,7 +477,6 @@ impl Snake {
             let y: u32 = 5;
             let tile = self.new_snake_tile(x, y)?;
             self.snakes.push_back(tile);
-            println!("grow snake");
         }
         Ok(())
     }
