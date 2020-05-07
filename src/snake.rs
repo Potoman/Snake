@@ -43,6 +43,12 @@ enum MineGenerationState {
     Generated,
 }
 
+struct SnakeTile {
+    tile: SpriteVisual,
+    x: u32,
+    y: u32,
+}
+
 pub struct Snake {
     compositor: Compositor,
     _root: SpriteVisual,
@@ -51,7 +57,7 @@ pub struct Snake {
     tiles: Vec<SpriteVisual>,
     selection_visual: SpriteVisual,
 
-    snakes: Vec<SpriteVisual>,
+    snakes: Vec<SnakeTile>,
 
     game_board_width: i32,
     game_board_height: i32,
@@ -155,6 +161,49 @@ impl Snake {
 
     pub fn tick(&mut self) {
         println!("tick");
+        self.move_snake();
+    }
+
+    fn move_snake(&mut self) {
+        let x: u32;
+        let y: u32;
+        let head = &self.snakes[self.snakes.len() - 1];
+        match self.snake_direction {
+            SnakeDirection::DOWN => {
+                if head.y == self.game_board_height as u32 - 1 {
+                    return;
+                }
+                x = head.x;
+                y = head.y + 1;
+            }
+            SnakeDirection::LEFT => {
+                if head.x == 0 {
+                    return;
+                }
+                x = head.x - 1;
+                y = head.y;
+            }
+            SnakeDirection::RIGHT => {
+                if head.x == self.game_board_width as u32 - 1 {
+                    return;
+                }
+                x = head.x + 1;
+                y = head.y;
+            }
+            SnakeDirection::UP => {
+                if head.y == 0 {
+                    return;
+                }
+                x = head.x;
+                y = head.y - 1;
+            }
+        }
+        match self.new_snake_tile(x, y) {
+            Ok(tile) => {
+                self.snakes.push(tile);
+            }
+            _ => {}
+        }
     }
 
     pub fn key_press(&mut self, key: VirtualKeyCode) {
@@ -280,6 +329,34 @@ impl Snake {
         Ok(())
     }
 
+    fn new_snake_tile(&mut self, x: u32, y: u32) -> winrt::Result<SnakeTile> {
+        let head_visual = self.compositor.create_sprite_visual()?;
+        let head_color_brush = self
+            .compositor
+            .create_color_brush_with_color(Colors::pink()?)?;
+        head_visual.set_brush(head_color_brush)?;
+        head_visual.set_offset(Vector3::from_vector2(
+            &self.margin / 2.0
+                + (&self.tile_size + &self.margin)
+                    * Vector2 {
+                        x: x as f32,
+                        y: y as f32,
+                    },
+            0.0,
+        ))?;
+        head_visual.set_is_visible(true)?;
+        head_visual.set_size(&self.tile_size)?;
+        head_visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
+        self.game_board.children()?.insert_at_top(&head_visual)?;
+
+        let snake_tile = SnakeTile {
+            tile: head_visual,
+            x: x,
+            y: y,
+        };
+        Ok(snake_tile)
+    }
+
     fn new_game(&mut self, board_width: i32, board_height: i32, mines: i32) -> winrt::Result<()> {
         self.game_board_width = board_width;
         self.game_board_height = board_height;
@@ -328,25 +405,12 @@ impl Snake {
                 break;
             }
             index = index + 1;
-            let head_visual = self.compositor.create_sprite_visual()?;
-            let head_color_brush = self
-                .compositor
-                .create_color_brush_with_color(Colors::pink()?)?;
-            head_visual.set_brush(head_color_brush)?;
-            head_visual.set_offset(Vector3::from_vector2(
-                &self.margin / 2.0
-                    + (&self.tile_size + &self.margin)
-                        * Vector2 {
-                            x: index as f32 + self.game_board_width as f32 / 2.0 - 1.0,
-                            y: self.game_board_height as f32 / 2.0 - 1.0,
-                        },
-                0.0,
-            ))?;
-            head_visual.set_is_visible(true)?;
-            head_visual.set_size(&self.tile_size)?;
-            head_visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
-            self.game_board.children()?.insert_at_top(&head_visual)?;
-            self.snakes.push(head_visual);
+            let x: u32 = index + self.game_board_width as u32 / 2 - 1;
+            let y: u32 = 5;
+
+            let snake_tile = self.new_snake_tile(x, y)?;
+
+            self.snakes.push(snake_tile);
         }
 
         self.mine_animation_playing = false;
