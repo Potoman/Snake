@@ -30,8 +30,6 @@ pub struct Snake {
     tile_size: Vector2,
     margin: Vector2,
     game_board_margin: Vector2,
-    current_selection_x: i32,
-    current_selection_y: i32,
     parent_size: Vector2,
 
     game_over: bool,
@@ -84,8 +82,6 @@ impl Snake {
         selection_visual.set_is_visible(false)?;
         selection_visual.set_size(&tile_size + &margin * 2.0)?;
         root.children()?.insert_at_top(&selection_visual)?;
-        let current_selection_x = -1;
-        let current_selection_y = -1;
 
         let mut result = Self {
             compositor: compositor,
@@ -101,8 +97,6 @@ impl Snake {
             tile_size: tile_size,
             margin: margin,
             game_board_margin: game_board_margin,
-            current_selection_x: current_selection_x,
-            current_selection_y: current_selection_y,
             parent_size: parent_size.clone(),
 
             game_over: false,
@@ -413,8 +407,6 @@ impl Snake {
         self.game_over = false;
 
         self.selection_visual.set_is_visible(false)?;
-        self.current_selection_x = -1;
-        self.current_selection_y = -1;
 
         self.update_board_scale(&self.parent_size.clone())?;
 
