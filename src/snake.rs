@@ -10,6 +10,11 @@ use rand::distributions::{Distribution, Uniform};
 use std::collections::VecDeque;
 use winit::event::VirtualKeyCode;
 
+use std::collections::HashMap;
+
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
+
 struct SnakeTile {
     x: u32,
     y: u32,
@@ -36,6 +41,8 @@ pub struct Snake {
     snake_direction: SnakeDirection,
     snake_map: Vec<bool>,
     apple_index: Option<usize>,
+
+    inputs: HashMap<InputName, SpriteVisual>,
 }
 
 unsafe impl Send for Snake {}
@@ -46,6 +53,40 @@ pub enum SnakeDirection {
     DOWN,
     RIGHT,
     LEFT,
+}
+
+pub enum TileState {
+    VOID,
+    APPLE,
+    SNAKE,
+}
+
+#[derive(EnumIter, Debug, PartialEq, Eq, Hash)]
+pub enum InputName {
+    RightApple,
+    RightSnake,
+    RightWall,
+    RightTopApple,
+    RightTopSnake,
+    RightTopWall,
+    TopApple,
+    TopSnake,
+    TopWall,
+    LeftTopApple,
+    LeftTopSnake,
+    LeftTopWall,
+    LeftApple,
+    LeftSnake,
+    LeftWall,
+    LeftDownApple,
+    LeftDownSnake,
+    LeftDownWall,
+    DownApple,
+    DownSnake,
+    DownWall,
+    RightDownApple,
+    RightDownSnake,
+    RightDownWall,
 }
 
 impl Snake {
@@ -60,7 +101,7 @@ impl Snake {
 
         let tile_size = Vector2 { x: 25.0, y: 25.0 };
         let margin = Vector2 { x: 2.5, y: 2.5 };
-        let game_board_margin = Vector2 { x: 100.0, y: 100.0 };
+        let game_board_margin = Vector2 { x: 200.0, y: 200.0 };
 
         let game_board = compositor.create_container_visual()?;
         game_board.set_relative_offset_adjustment(Vector3 {
@@ -103,6 +144,8 @@ impl Snake {
             snake_direction: SnakeDirection::RIGHT,
             snake_map: Vec::new(),
             apple_index: None,
+
+            inputs: HashMap::new(),
         };
 
         result.new_game(16, 16)?;
@@ -123,10 +166,35 @@ impl Snake {
         self.game_board.set_size(
             (&self.tile_size + &self.margin)
                 * Vector2 {
-                    x: self.game_board_width as f32,
-                    y: self.game_board_height as f32,
+                    x: self.game_board_width as f32 * 2.0,
+                    y: self.game_board_height as f32 * 2.0,
                 },
         )?;
+
+        let mut x: u32 = 0;
+        for input_name in InputName::iter() {
+            // Print input status :
+            let visual = self.compositor.create_sprite_visual()?;
+            visual.set_size(&self.tile_size)?;
+            visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
+            visual.set_offset(Vector3::from_vector2(
+                (&self.margin / 2.0)
+                    + ((&self.tile_size + &self.margin)
+                        * Vector2 {
+                            x: self.game_board_width as f32 + 2.0,
+                            y: x as f32,
+                        }),
+                0.0,
+            ))?;
+            visual.set_brush(
+                self.compositor
+                    .create_color_brush_with_color(Colors::red()?)?,
+            )?;
+            self.game_board.children()?.insert_at_top(&visual)?;
+
+            self.inputs.insert(input_name, visual);
+            x = x + 1;
+        }
 
         for x in 0..self.game_board_width {
             for y in 0..self.game_board_height {
@@ -251,6 +319,14 @@ impl Snake {
                 }
             }
         }
+
+        match self.compute_inputs(x, y) {
+            Ok(()) => {}
+            _ => {
+                return Err(());
+            }
+        }
+
         return Ok(());
     }
 
@@ -263,6 +339,11 @@ impl Snake {
                 return false;
             }
         }
+    }
+
+    fn is_snake(&mut self, x: u32, y: u32) -> bool {
+        let index = self.compute_index_from_u32(x, y);
+        return self.snake_map[index];
     }
 
     fn generate_apple(&mut self) -> Result<(), ()> {
@@ -415,9 +496,9 @@ impl Snake {
         Ok(())
     }
 
-    fn set_input_state(&mut self, index: usize, state: bool) -> winrt::Result<()> {
-        let visual = &self.inputs[index];
-        if state {
+    fn set_input_state(&mut self, key: &InputName, state: f32) -> winrt::Result<()> {
+        let visual = &self.inputs[&key];
+        if state > 0.5 {
             visual.set_brush(
                 self.compositor
                     .create_color_brush_with_color(Colors::green()?)?,
@@ -474,5 +555,142 @@ impl Snake {
 
     fn compute_index_from_u32(&self, x: u32, y: u32) -> usize {
         (x * self.game_board_height + y) as usize
+    }
+
+    fn get_tile_state(&mut self, x: u32, y: u32) -> TileState {
+        if self.is_apple(x, y) {
+            return TileState::APPLE;
+        }
+        if self.is_snake(x, y) {
+            return TileState::SNAKE;
+        }
+        return TileState::VOID;
+    }
+
+    fn compute_inputs(&mut self, x: u32, y: u32) -> winrt::Result<()> {
+        self.compute_input(
+            x,
+            y,
+            1,
+            0,
+            &InputName::RightApple,
+            &InputName::RightSnake,
+            &InputName::RightWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            1,
+            1,
+            &InputName::RightTopApple,
+            &InputName::RightTopSnake,
+            &InputName::RightTopWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            0,
+            1,
+            &InputName::TopApple,
+            &InputName::TopSnake,
+            &InputName::TopWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            -1,
+            1,
+            &InputName::LeftTopApple,
+            &InputName::LeftTopSnake,
+            &InputName::LeftTopWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            -1,
+            0,
+            &InputName::LeftApple,
+            &InputName::LeftSnake,
+            &InputName::LeftWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            -1,
+            -1,
+            &InputName::LeftDownApple,
+            &InputName::LeftDownSnake,
+            &InputName::LeftDownWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            0,
+            -1,
+            &InputName::DownApple,
+            &InputName::DownSnake,
+            &InputName::DownWall,
+        )?;
+        self.compute_input(
+            x,
+            y,
+            1,
+            -1,
+            &InputName::RightDownApple,
+            &InputName::RightDownSnake,
+            &InputName::RightDownWall,
+        )?;
+        Ok(())
+    }
+
+    fn compute_input(
+        &mut self,
+        x: u32,
+        y: u32,
+        incr_x: i32,
+        incr_y: i32,
+        dest_apple: &InputName,
+        dest_snake: &InputName,
+        dest_wall: &InputName,
+    ) -> winrt::Result<()> {
+        let mut dest_from_wall: u32 = 0;
+        let mut _x: i32 = x as i32;
+        let mut _y: i32 = y as i32;
+        let mut item_found: bool = false;
+        loop {
+            _x = _x + incr_x;
+            _y = _y + incr_y;
+            if _x < 0
+                || _y < 0
+                || _x as u32 == self.game_board_width
+                || _y as u32 == self.game_board_height
+            {
+                break;
+            }
+            dest_from_wall = dest_from_wall + 1;
+            match self.get_tile_state(_x as u32, _y as u32) {
+                TileState::APPLE => {
+                    self.set_input_state(&dest_apple, 1.0)?;
+                    self.set_input_state(&dest_snake, 0.0)?;
+                    item_found = true;
+                }
+                TileState::SNAKE => {
+                    self.set_input_state(&dest_apple, 0.0)?;
+                    self.set_input_state(&dest_snake, 1.0)?;
+                    item_found = true;
+                }
+                _ => {}
+            }
+
+            if item_found {
+                break;
+            }
+        }
+        if !item_found {
+            self.set_input_state(&dest_apple, 0.0)?;
+            self.set_input_state(&dest_snake, 0.0)?;
+            self.set_input_state(&dest_wall, 1.0 - 1.0 / dest_from_wall as f32)?;
+        }
+        Ok(())
     }
 }

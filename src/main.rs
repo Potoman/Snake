@@ -32,6 +32,9 @@ use winit::{
 
 use windows::{foundation::numerics::Vector2, ui::composition::Compositor};
 
+extern crate strum;
+extern crate strum_macros;
+
 fn run() -> winrt::Result<()> {
     ro_initialize(RoInitType::MultiThreaded)?;
     let _controller = create_dispatcher_queue_controller_for_current_thread()?;
