@@ -287,10 +287,6 @@ impl Snake {
 
         let apple_index: usize = self.compute_index_from_u32(x as u32, y as u32);
 
-        if self.snake_map[apple_index] {
-            println!("errooooooooooooooooooooor");
-        }
-
         self.apple_index = Some(apple_index);
 
         match self.set_tile_color_to_red(apple_index) {
