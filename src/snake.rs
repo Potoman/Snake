@@ -255,7 +255,17 @@ impl Snake {
                     self.set_snake_direction(SnakeDirection::UP);
                 }
             }
+            VirtualKeyCode::Up => {
+                if self.snake_direction != SnakeDirection::DOWN {
+                    self.set_snake_direction(SnakeDirection::UP);
+                }
+            }
             VirtualKeyCode::Q => {
+                if self.snake_direction != SnakeDirection::RIGHT {
+                    self.set_snake_direction(SnakeDirection::LEFT);
+                }
+            }
+            VirtualKeyCode::Left => {
                 if self.snake_direction != SnakeDirection::RIGHT {
                     self.set_snake_direction(SnakeDirection::LEFT);
                 }
@@ -265,7 +275,17 @@ impl Snake {
                     self.set_snake_direction(SnakeDirection::DOWN);
                 }
             }
+            VirtualKeyCode::Down => {
+                if self.snake_direction != SnakeDirection::UP {
+                    self.set_snake_direction(SnakeDirection::DOWN);
+                }
+            }
             VirtualKeyCode::D => {
+                if self.snake_direction != SnakeDirection::LEFT {
+                    self.set_snake_direction(SnakeDirection::RIGHT);
+                }
+            }
+            VirtualKeyCode::Right => {
                 if self.snake_direction != SnakeDirection::LEFT {
                     self.set_snake_direction(SnakeDirection::RIGHT);
                 }
