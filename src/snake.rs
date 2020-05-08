@@ -76,6 +76,7 @@ pub struct Snake {
     game_over: bool,
     snake_direction: SnakeDirection,
     snake_map: Vec<bool>,
+    apple_index: Option<usize>,
 }
 
 unsafe impl Send for Snake {}
@@ -152,10 +153,12 @@ impl Snake {
             game_over: false,
             snake_direction: SnakeDirection::RIGHT,
             snake_map: Vec::new(),
+            apple_index: None,
         };
 
         result.new_game(16, 16, 40)?;
         result.create_snake();
+        result.generate_apple();
         result.on_parent_size_changed(parent_size)?;
 
         Ok(result)
@@ -168,6 +171,7 @@ impl Snake {
             _ => {
                 self.new_game(16, 16, 40);
                 self.create_snake();
+                self.generate_apple();
             }
         }
     }
@@ -210,23 +214,6 @@ impl Snake {
             }
         }
 
-        // Remove tail :
-        match &self.snakes.pop_front() {
-            Some(tail) => {
-                let index = self.compute_index_from_u32(tail.x, tail.y);
-                match self.set_tile_to_blue(index) {
-                    Ok(()) => {}
-                    _ => {
-                        return Err(());
-                    }
-                }
-                self.snake_map[index] = false;
-            }
-            _ => {
-                return Err(());
-            }
-        }
-
         // Add head :
         match self.new_snake_tile(x, y) {
             Ok(tile) => {
@@ -236,7 +223,79 @@ impl Snake {
                 return Err(());
             }
         }
+
+        if self.is_apple(x, y) {
+            self.generate_apple();
+        } else {
+            // Remove tail :
+            match &self.snakes.pop_front() {
+                Some(tail) => {
+                    let index = self.compute_index_from_u32(tail.x, tail.y);
+                    match self.set_tile_to_blue(index) {
+                        Ok(()) => {}
+                        _ => {
+                            return Err(());
+                        }
+                    }
+                    self.snake_map[index] = false;
+                }
+                _ => {
+                    return Err(());
+                }
+            }
+        }
         return Ok(());
+    }
+
+    fn is_apple(&mut self, x: u32, y: u32) -> bool {
+        match self.apple_index {
+            Some(index) => {
+                return index == self.compute_index_from_u32(x, y);
+            }
+            _ => {
+                return false;
+            }
+        }
+    }
+
+    fn generate_apple(&mut self) {
+        let between = Uniform::from(0..(self.game_board_width) as usize);
+        let mut rng = rand::thread_rng();
+        let mut x: usize;
+        loop {
+            x = between.sample(&mut rng);
+            let mut do_break: bool = false;
+            for y in 0..self.game_board_height as u32 {
+                let index: usize = self.compute_index_from_u32(x as u32, y);
+                if !self.snake_map[index] {
+                    // It's ok.
+                    do_break = true;
+                    break;
+                }
+            }
+            if do_break {
+                break;
+            }
+        }
+
+        let mut y: usize;
+        while {
+            y = between.sample(&mut rng);
+            let index: usize = self.compute_index_from_u32(x as u32, y as u32);
+            self.snake_map[index]
+        } {}
+
+        let apple_index: usize = self.compute_index_from_u32(x as u32, y as u32);
+
+        if self.snake_map[apple_index] {
+            println!("errooooooooooooooooooooor");
+        }
+
+        self.apple_index = Some(apple_index);
+
+        match self.set_tile_color_to_red(apple_index) {
+            _ => {}
+        }
     }
 
     fn set_tile_to_blue(&mut self, index: usize) -> winrt::Result<()> {
@@ -416,6 +475,15 @@ impl Snake {
         visual.set_brush(
             self.compositor
                 .create_color_brush_with_color(Colors::pink()?)?,
+        )?;
+        Ok(())
+    }
+
+    fn set_tile_color_to_red(&mut self, index: usize) -> winrt::Result<()> {
+        let visual = &self.tiles[index];
+        visual.set_brush(
+            self.compositor
+                .create_color_brush_with_color(Colors::red()?)?,
         )?;
         Ok(())
     }
