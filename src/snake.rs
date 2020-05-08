@@ -225,7 +225,7 @@ impl Snake {
         }
 
         if self.is_apple(x, y) {
-            self.generate_apple();
+            self.generate_apple()?;
         } else {
             // Remove tail :
             match &self.snakes.pop_front() {
@@ -258,7 +258,17 @@ impl Snake {
         }
     }
 
-    fn generate_apple(&mut self) {
+    fn generate_apple(&mut self) -> Result<(), ()> {
+        let mut available_position: u32 = 0;
+        for index in 0..self.game_board_height * self.game_board_width {
+            if !self.snake_map[index as usize] {
+                available_position = available_position + 1;
+            }
+        }
+        if available_position == 0 {
+            // No position available
+            return Err(());
+        }
         let between = Uniform::from(0..(self.game_board_width) as usize);
         let mut rng = rand::thread_rng();
         let mut x: usize;
@@ -292,6 +302,7 @@ impl Snake {
         match self.set_tile_color_to_red(apple_index) {
             _ => {}
         }
+        return Ok(());
     }
 
     fn set_tile_to_blue(&mut self, index: usize) -> winrt::Result<()> {
