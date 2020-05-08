@@ -54,7 +54,7 @@ impl Snake {
         let root = compositor.create_sprite_visual()?;
 
         root.set_relative_size_adjustment(Vector2 { x: 1.0, y: 1.0 })?;
-        root.set_brush(compositor.create_color_brush_with_color(Colors::white()?)?)?;
+        root.set_brush(compositor.create_color_brush_with_color(Colors::black()?)?)?;
         root.set_border_mode(CompositionBorderMode::Hard)?;
         parent_visual.children()?.insert_at_top(&root)?;
 
