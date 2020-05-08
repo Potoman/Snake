@@ -557,14 +557,14 @@ impl Snake {
         // Head :
         let mut index: u32 = 0;
         loop {
+            let x: u32 = index + self.game_board_width as u32 / 2 - 1;
+            let y: u32 = 0;
+            let tile = self.new_snake_tile(x, y)?;
+            self.snakes.push_back(tile);
+            index = index + 1;
             if index == 3 {
                 break;
             }
-            index = index + 1;
-            let x: u32 = index + self.game_board_width as u32 / 2 - 1;
-            let y: u32 = 5;
-            let tile = self.new_snake_tile(x, y)?;
-            self.snakes.push_back(tile);
         }
         Ok(())
     }
