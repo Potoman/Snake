@@ -186,7 +186,7 @@ impl Snake {
             match &self.snakes.pop_front() {
                 Some(tail) => {
                     let index = self.compute_index_from_u32(tail.x, tail.y);
-                    match self.set_tile_to_blue(index) {
+                    match self.set_tile_color_to_blue(index) {
                         Ok(()) => {}
                         _ => {
                             return Err(());
@@ -258,15 +258,6 @@ impl Snake {
             _ => {}
         }
         return Ok(());
-    }
-
-    fn set_tile_to_blue(&mut self, index: usize) -> winrt::Result<()> {
-        let visual = &self.tiles[index];
-        visual.set_brush(
-            self.compositor
-                .create_color_brush_with_color(Colors::blue()?)?,
-        )?;
-        Ok(())
     }
 
     pub fn key_press(&mut self, key: VirtualKeyCode) {
@@ -343,6 +334,15 @@ impl Snake {
 
         let snake_tile = SnakeTile { x: x, y: y };
         return Ok(snake_tile);
+    }
+
+    fn set_tile_color_to_blue(&mut self, index: usize) -> winrt::Result<()> {
+        let visual = &self.tiles[index];
+        visual.set_brush(
+            self.compositor
+                .create_color_brush_with_color(Colors::blue()?)?,
+        )?;
+        Ok(())
     }
 
     fn set_tile_color_to_pink(&mut self, index: usize) -> winrt::Result<()> {
