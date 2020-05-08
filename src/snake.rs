@@ -87,6 +87,10 @@ pub enum InputName {
     RightDownApple,
     RightDownSnake,
     RightDownWall,
+    HeadDown,
+    HeadLeft,
+    HeadRight,
+    HeadUp,
 }
 
 impl Snake {
@@ -640,6 +644,34 @@ impl Snake {
             &InputName::RightDownSnake,
             &InputName::RightDownWall,
         )?;
+        // Head direction :
+        match self.snake_direction {
+            SnakeDirection::DOWN => {
+                self.set_input_state(&InputName::HeadDown, 1.0)?;
+                self.set_input_state(&InputName::HeadLeft, 0.0)?;
+                self.set_input_state(&InputName::HeadRight, 0.0)?;
+                self.set_input_state(&InputName::HeadUp, 0.0)?;
+            }
+            SnakeDirection::LEFT => {
+                self.set_input_state(&InputName::HeadDown, 0.0)?;
+                self.set_input_state(&InputName::HeadLeft, 1.0)?;
+                self.set_input_state(&InputName::HeadRight, 0.0)?;
+                self.set_input_state(&InputName::HeadUp, 0.0)?;
+            }
+            SnakeDirection::RIGHT => {
+                self.set_input_state(&InputName::HeadDown, 0.0)?;
+                self.set_input_state(&InputName::HeadLeft, 0.0)?;
+                self.set_input_state(&InputName::HeadRight, 1.0)?;
+                self.set_input_state(&InputName::HeadUp, 0.0)?;
+            }
+            SnakeDirection::UP => {
+                self.set_input_state(&InputName::HeadDown, 0.0)?;
+                self.set_input_state(&InputName::HeadLeft, 0.0)?;
+                self.set_input_state(&InputName::HeadRight, 0.0)?;
+                self.set_input_state(&InputName::HeadUp, 1.0)?;
+            }
+            _ => {}
+        }
         Ok(())
     }
 
