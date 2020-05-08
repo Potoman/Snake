@@ -18,6 +18,7 @@ use strum_macros::EnumIter;
 struct SnakeTile {
     x: u32,
     y: u32,
+    direction: SnakeDirection,
 }
 
 pub struct Snake {
@@ -47,7 +48,7 @@ pub struct Snake {
 
 unsafe impl Send for Snake {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum SnakeDirection {
     UP,
     DOWN,
@@ -91,6 +92,10 @@ pub enum InputName {
     HeadLeft,
     HeadRight,
     HeadUp,
+    TailDown,
+    TailLeft,
+    TailRight,
+    TailUp,
 }
 
 impl Snake {
@@ -469,7 +474,11 @@ impl Snake {
             }
         }
 
-        let snake_tile = SnakeTile { x: x, y: y };
+        let snake_tile = SnakeTile {
+            x: x,
+            y: y,
+            direction: self.snake_direction.clone(),
+        };
         return Ok(snake_tile);
     }
 
@@ -670,6 +679,35 @@ impl Snake {
                 self.set_input_state(&InputName::HeadRight, 0.0)?;
                 self.set_input_state(&InputName::HeadUp, 1.0)?;
             }
+        }
+        // Tail direction :
+        match self.snakes.front() {
+            Some(tail) => match tail.direction {
+                SnakeDirection::DOWN => {
+                    self.set_input_state(&InputName::TailDown, 1.0)?;
+                    self.set_input_state(&InputName::TailLeft, 0.0)?;
+                    self.set_input_state(&InputName::TailRight, 0.0)?;
+                    self.set_input_state(&InputName::TailUp, 0.0)?;
+                }
+                SnakeDirection::LEFT => {
+                    self.set_input_state(&InputName::TailDown, 0.0)?;
+                    self.set_input_state(&InputName::TailLeft, 1.0)?;
+                    self.set_input_state(&InputName::TailRight, 0.0)?;
+                    self.set_input_state(&InputName::TailUp, 0.0)?;
+                }
+                SnakeDirection::RIGHT => {
+                    self.set_input_state(&InputName::TailDown, 0.0)?;
+                    self.set_input_state(&InputName::TailLeft, 0.0)?;
+                    self.set_input_state(&InputName::TailRight, 1.0)?;
+                    self.set_input_state(&InputName::TailUp, 0.0)?;
+                }
+                SnakeDirection::UP => {
+                    self.set_input_state(&InputName::TailDown, 0.0)?;
+                    self.set_input_state(&InputName::TailLeft, 0.0)?;
+                    self.set_input_state(&InputName::TailRight, 0.0)?;
+                    self.set_input_state(&InputName::TailUp, 1.0)?;
+                }
+            },
             _ => {}
         }
         Ok(())
