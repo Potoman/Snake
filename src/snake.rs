@@ -25,8 +25,8 @@ pub struct Snake {
 
     snakes: VecDeque<SnakeTile>,
 
-    game_board_width: i32,
-    game_board_height: i32,
+    game_board_width: u32,
+    game_board_height: u32,
     tile_size: Vector2,
     margin: Vector2,
     game_board_margin: Vector2,
@@ -113,7 +113,7 @@ impl Snake {
         Ok(result)
     }
 
-    fn new_game(&mut self, board_width: i32, board_height: i32) -> winrt::Result<()> {
+    fn new_game(&mut self, board_width: u32, board_height: u32) -> winrt::Result<()> {
         self.game_board_width = board_width;
         self.game_board_height = board_height;
 
@@ -192,7 +192,7 @@ impl Snake {
         let head = &self.snakes[self.snakes.len() - 1];
         match self.snake_direction {
             SnakeDirection::DOWN => {
-                if head.y == self.game_board_height as u32 - 1 {
+                if head.y == self.game_board_height - 1 {
                     return Err(());
                 }
                 x = head.x;
@@ -206,7 +206,7 @@ impl Snake {
                 y = head.y;
             }
             SnakeDirection::RIGHT => {
-                if head.x == self.game_board_width as u32 - 1 {
+                if head.x == self.game_board_width - 1 {
                     return Err(());
                 }
                 x = head.x + 1;
@@ -282,7 +282,7 @@ impl Snake {
         loop {
             x = between.sample(&mut rng);
             let mut do_break: bool = false;
-            for y in 0..self.game_board_height as u32 {
+            for y in 0..self.game_board_height {
                 let index: usize = self.compute_index_from_u32(x as u32, y);
                 if !self.snake_map[index] {
                     // It's ok.
@@ -415,12 +415,28 @@ impl Snake {
         Ok(())
     }
 
+    fn set_input_state(&mut self, index: usize, state: bool) -> winrt::Result<()> {
+        let visual = &self.inputs[index];
+        if state {
+            visual.set_brush(
+                self.compositor
+                    .create_color_brush_with_color(Colors::green()?)?,
+            )?;
+        } else {
+            visual.set_brush(
+                self.compositor
+                    .create_color_brush_with_color(Colors::red()?)?,
+            )?;
+        }
+        Ok(())
+    }
+
     fn create_snake(&mut self) -> Result<(), ()> {
         // Head :
         let mut index: u32 = 0;
         loop {
-            let x: u32 = index + self.game_board_width as u32 / 2 - 1;
-            let y: u32 = self.game_board_height as u32 / 2;
+            let x: u32 = index + self.game_board_width / 2 - 1;
+            let y: u32 = self.game_board_height / 2;
             let tile = self.new_snake_tile(x, y)?;
             self.snakes.push_back(tile);
             index = index + 1;
@@ -457,6 +473,6 @@ impl Snake {
     }
 
     fn compute_index_from_u32(&self, x: u32, y: u32) -> usize {
-        (x * self.game_board_height as u32 + y) as usize
+        (x * self.game_board_height + y) as usize
     }
 }
