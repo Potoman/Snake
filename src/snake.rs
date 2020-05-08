@@ -113,6 +113,64 @@ impl Snake {
         Ok(result)
     }
 
+    fn new_game(&mut self, board_width: i32, board_height: i32) -> winrt::Result<()> {
+        self.game_board_width = board_width;
+        self.game_board_height = board_height;
+
+        self.game_board.children()?.remove_all()?;
+        self.tiles.clear();
+
+        self.game_board.set_size(
+            (&self.tile_size + &self.margin)
+                * Vector2 {
+                    x: self.game_board_width as f32,
+                    y: self.game_board_height as f32,
+                },
+        )?;
+
+        for x in 0..self.game_board_width {
+            for y in 0..self.game_board_height {
+                let visual = self.compositor.create_sprite_visual()?;
+                visual.set_size(&self.tile_size)?;
+                visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
+                visual.set_offset(Vector3::from_vector2(
+                    (&self.margin / 2.0)
+                        + ((&self.tile_size + &self.margin)
+                            * Vector2 {
+                                x: x as f32,
+                                y: y as f32,
+                            }),
+                    0.0,
+                ))?;
+                visual.set_brush(
+                    self.compositor
+                        .create_color_brush_with_color(Colors::blue()?)?,
+                )?;
+
+                self.game_board.children()?.insert_at_top(&visual)?;
+                self.tiles.push(visual);
+            }
+        }
+
+        self.snake_map.clear();
+        for _x in 0..self.game_board_width {
+            for _y in 0..self.game_board_height {
+                self.snake_map.push(false);
+            }
+        }
+        self.snakes.clear();
+
+        self.game_over = false;
+
+        self.selection_visual.set_is_visible(false)?;
+
+        self.update_board_scale(&self.parent_size.clone())?;
+
+        self.snake_direction = SnakeDirection::RIGHT;
+
+        Ok(())
+    }
+
     pub fn tick(&mut self) {
         println!("tick");
         match self.move_snake() {
@@ -354,64 +412,6 @@ impl Snake {
             self.compositor
                 .create_color_brush_with_color(Colors::red()?)?,
         )?;
-        Ok(())
-    }
-
-    fn new_game(&mut self, board_width: i32, board_height: i32) -> winrt::Result<()> {
-        self.game_board_width = board_width;
-        self.game_board_height = board_height;
-
-        self.game_board.children()?.remove_all()?;
-        self.tiles.clear();
-
-        self.game_board.set_size(
-            (&self.tile_size + &self.margin)
-                * Vector2 {
-                    x: self.game_board_width as f32,
-                    y: self.game_board_height as f32,
-                },
-        )?;
-
-        for x in 0..self.game_board_width {
-            for y in 0..self.game_board_height {
-                let visual = self.compositor.create_sprite_visual()?;
-                visual.set_size(&self.tile_size)?;
-                visual.set_center_point(Vector3::from_vector2(&self.tile_size / 2.0, 0.0))?;
-                visual.set_offset(Vector3::from_vector2(
-                    (&self.margin / 2.0)
-                        + ((&self.tile_size + &self.margin)
-                            * Vector2 {
-                                x: x as f32,
-                                y: y as f32,
-                            }),
-                    0.0,
-                ))?;
-                visual.set_brush(
-                    self.compositor
-                        .create_color_brush_with_color(Colors::blue()?)?,
-                )?;
-
-                self.game_board.children()?.insert_at_top(&visual)?;
-                self.tiles.push(visual);
-            }
-        }
-
-        self.snake_map.clear();
-        for _x in 0..self.game_board_width {
-            for _y in 0..self.game_board_height {
-                self.snake_map.push(false);
-            }
-        }
-        self.snakes.clear();
-
-        self.game_over = false;
-
-        self.selection_visual.set_is_visible(false)?;
-
-        self.update_board_scale(&self.parent_size.clone())?;
-
-        self.snake_direction = SnakeDirection::RIGHT;
-
         Ok(())
     }
 
