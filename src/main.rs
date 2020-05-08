@@ -75,16 +75,6 @@ fn run() -> winrt::Result<()> {
                     window_id,
                 } if window_id == window.id() => *control_flow = ControlFlow::Exit,
                 Event::WindowEvent {
-                    event: WindowEvent::Resized(size),
-                    ..
-                } => {
-                    let size = Vector2 {
-                        x: size.width as f32,
-                        y: size.height as f32,
-                    };
-                    game.on_parent_size_changed(&size).unwrap();
-                }
-                Event::WindowEvent {
                     event: WindowEvent::KeyboardInput { input, .. },
                     ..
                 } if input.state == ElementState::Released => match input.virtual_keycode {

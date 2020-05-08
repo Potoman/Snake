@@ -319,7 +319,7 @@ impl Snake {
         self.snake_direction = direction;
     }
 
-    pub fn on_parent_size_changed(&mut self, new_size: &Vector2) -> winrt::Result<()> {
+    fn on_parent_size_changed(&mut self, new_size: &Vector2) -> winrt::Result<()> {
         self.parent_size = new_size.clone();
         self.update_board_scale(new_size)?;
         Ok(())
@@ -452,10 +452,6 @@ impl Snake {
         }
 
         Ok(scale_factor)
-    }
-
-    fn compute_scale_factor(&self) -> winrt::Result<f32> {
-        self.compute_scale_factor_from_size(&self.parent_size)
     }
 
     fn update_board_scale(&mut self, window_size: &Vector2) -> winrt::Result<()> {
