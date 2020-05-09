@@ -12,6 +12,7 @@ winrt::import!(
 );
 
 mod interop;
+mod machine_learning;
 mod numerics;
 mod snake;
 mod time_span;
