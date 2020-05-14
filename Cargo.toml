@@ -11,3 +11,4 @@ winrt = { git = "https://github.com/microsoft/winrt-rs" }
 rand = "0.7.3"
 strum = "0.18.0"
 strum_macros = "0.18.0"
+tensorflow = { version = "0.15.0", features = ["experimental_training", "tensorflow_gpu"] }
