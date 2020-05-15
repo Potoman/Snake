@@ -35,6 +35,7 @@ use windows::{foundation::numerics::Vector2, ui::composition::Compositor};
 
 extern crate strum;
 extern crate strum_macros;
+extern crate tensorflow;
 
 fn run() -> winrt::Result<()> {
     ro_initialize(RoInitType::MultiThreaded)?;
