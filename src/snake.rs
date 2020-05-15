@@ -158,8 +158,12 @@ impl Snake {
         };
 
         result.new_game(16, 16)?;
-        result.create_snake();
-        result.generate_apple();
+        match result.create_snake() {
+            _ => {}
+        }
+        match result.generate_apple() {
+            _ => {}
+        }
         result.on_parent_size_changed(parent_size)?;
 
         Ok(result)
@@ -253,9 +257,15 @@ impl Snake {
         match self.move_snake() {
             Ok(()) => {}
             _ => {
-                self.new_game(16, 16);
-                self.create_snake();
-                self.generate_apple();
+                match self.new_game(16, 16) {
+                    _ => {}
+                }
+                match self.create_snake() {
+                    _ => {}
+                }
+                match self.generate_apple() {
+                    _ => {}
+                }
             }
         }
     }
