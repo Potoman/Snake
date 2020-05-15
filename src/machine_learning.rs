@@ -77,6 +77,17 @@ impl SnakeNN {
         };
         Ok(result)
     }
+
+    pub fn compute_move(&mut self, inputs: &[f32]) -> Result<(), Box<dyn Error>> {
+        let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
+        let mut run_args = SessionRunArgs::new();
+        for (index, input) in inputs.iter().enumerate() {
+            input_tensor[index] = *input;
+        }
+        run_args.add_feed(&self.input, 0, &input_tensor);
+        self.session.run(&mut run_args)?;
+        Ok(())
+    }
 }
 
 fn layer<O1: Into<Output>>(
@@ -139,7 +150,16 @@ mod tests {
     fn test_nn() {
         let snake_nn = SnakeNN::new();
         match snake_nn {
-            Ok(_nn) => {}
+            Ok(mut nn) => {
+                let snake_inputs: [f32; 32] = [
+                    1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
+                    1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
+                ];
+                match nn.compute_move(&snake_inputs) {
+                    Ok(_v) => {}
+                    _ => {}
+                }
+            }
             _ => {}
         }
     }
