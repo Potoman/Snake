@@ -3,6 +3,9 @@ use tensorflow::ops;
 use tensorflow::DataType;
 use tensorflow::Output;
 use tensorflow::Scope;
+use tensorflow::Session;
+use tensorflow::SessionOptions;
+use tensorflow::SessionRunArgs;
 use tensorflow::Shape;
 use tensorflow::Status;
 use tensorflow::Tensor;
@@ -14,6 +17,66 @@ pub fn fitness(apple: u32, frame: u32) -> f64 {
     let f_apple = apple as f64;
     return f_frame + base.powf(f_apple) + 500.0 * f_apple.powf(2.1)
         - 0.25 * f_frame.powf(1.3) * f_apple.powf(1.2);
+}
+
+pub struct SnakeNN {
+    session: Session,
+    input: tensorflow::Operation,
+}
+
+impl SnakeNN {
+    pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
+        let mut scope = Scope::new_root_scope();
+        // Input layer :
+        let input: tensorflow::Operation = ops::Placeholder::new()
+            .dtype(DataType::Float)
+            .shape(Shape::from(&[1u64, 32][..]))
+            .build(&mut scope.with_op_name("input"))?;
+        // Hidden layer.
+        let (vars1, layer1) = layer(
+            input.clone(),
+            32,
+            20,
+            &|x, scope| Ok(ops::relu(x, scope)?.into()),
+            &mut scope,
+        )?;
+        // Hidden layer.
+        let (vars2, layer2) = layer(
+            layer1.clone(),
+            20,
+            12,
+            &|x, scope| Ok(ops::relu(x, scope)?.into()),
+            &mut scope,
+        )?;
+        // Output layer.
+        let (vars_output, _layer_output) = layer(
+            layer2.clone(),
+            12,
+            4,
+            &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
+            &mut scope,
+        )?;
+        let mut variables = Vec::new();
+        variables.extend(vars1);
+        variables.extend(vars2);
+        variables.extend(vars_output);
+
+        // Initialize variables :
+        let options = SessionOptions::new();
+        let g = scope.graph_mut();
+        let session = Session::new(&options, &g)?;
+        let mut run_args = SessionRunArgs::new();
+        for variable in &variables {
+            run_args.add_target(&variable.initializer());
+        }
+        session.run(&mut run_args)?;
+
+        let result = Self {
+            session: session,
+            input: input,
+        };
+        Ok(result)
+    }
 }
 
 fn layer<O1: Into<Output>>(
@@ -52,41 +115,6 @@ fn layer<O1: Into<Output>>(
     ))
 }
 
-pub fn build_model() -> Result<(), Box<dyn Error>> {
-    let mut scope = Scope::new_root_scope();
-    let scope = &mut scope;
-    // Input layer :
-    let input = ops::Placeholder::new()
-        .dtype(DataType::Float)
-        .shape(Shape::from(&[1u64, 32][..]))
-        .build(&mut scope.with_op_name("input"))?;
-    // Hidden layer.
-    let (vars1, layer1) = layer(
-        input.clone(),
-        32,
-        20,
-        &|x, scope| Ok(ops::relu(x, scope)?.into()),
-        scope,
-    )?;
-    // Hidden layer.
-    let (vars2, layer2) = layer(
-        layer1.clone(),
-        20,
-        12,
-        &|x, scope| Ok(ops::relu(x, scope)?.into()),
-        scope,
-    )?;
-    // Output layer.
-    let (vars_output, layer_output) = layer(
-        layer2.clone(),
-        12,
-        4,
-        &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
-        scope,
-    )?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,7 +137,9 @@ mod tests {
 
     #[test]
     fn test_nn() {
-        match build_model() {
+        let snake_nn = SnakeNN::new();
+        match snake_nn {
+            Ok(_nn) => {}
             _ => {}
         }
     }
