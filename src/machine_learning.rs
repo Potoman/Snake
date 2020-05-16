@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt;
 use tensorflow::ops;
 use tensorflow::DataType;
 use tensorflow::Output;
@@ -11,6 +12,8 @@ use tensorflow::Status;
 use tensorflow::Tensor;
 use tensorflow::Variable;
 
+use crate::snake::SnakeDirection;
+
 pub fn fitness(apple: u32, frame: u32) -> f64 {
     let base: f64 = 2.0;
     let f_frame = frame as f64;
@@ -22,7 +25,19 @@ pub fn fitness(apple: u32, frame: u32) -> f64 {
 pub struct SnakeNN {
     session: Session,
     input: tensorflow::Operation,
+    output: tensorflow::Output,
 }
+
+#[derive(Debug)]
+struct MyError(String);
+
+impl fmt::Display for MyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "There is an error: {}", self.0)
+    }
+}
+
+impl Error for MyError {}
 
 impl SnakeNN {
     pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
@@ -49,7 +64,7 @@ impl SnakeNN {
             &mut scope,
         )?;
         // Output layer.
-        let (vars_output, _layer_output) = layer(
+        let (vars_output, layer_output) = layer(
             layer2.clone(),
             12,
             4,
@@ -74,19 +89,57 @@ impl SnakeNN {
         let result = Self {
             session: session,
             input: input,
+            output: layer_output,
         };
         Ok(result)
     }
 
-    pub fn compute_move(&mut self, inputs: &[f32]) -> Result<(), Box<dyn Error>> {
+    pub fn compute_move(&mut self, inputs: &[f32]) -> Result<SnakeDirection, Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
         let mut run_args = SessionRunArgs::new();
         for (index, input) in inputs.iter().enumerate() {
             input_tensor[index] = *input;
         }
         run_args.add_feed(&self.input, 0, &input_tensor);
+
+        let result_token = run_args.request_fetch(&self.output.operation, self.output.index);
+
         self.session.run(&mut run_args)?;
-        Ok(())
+
+        let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
+        let intput_up: f32 = result_tensor.get(&[0, 0]);
+        let intput_down: f32 = result_tensor.get(&[0, 1]);
+        let intput_left: f32 = result_tensor.get(&[0, 2]);
+        let intput_right: f32 = result_tensor.get(&[0, 3]);
+        let mut index_save: Option<usize> = None;
+        let mut save_value: f32 = f32::NEG_INFINITY;
+        for (index, value) in [intput_up, intput_down, intput_left, intput_right]
+            .iter()
+            .enumerate()
+        {
+            match index_save {
+                Some(v) => {
+                    if save_value < *value {
+                        index_save = Some(index);
+                        save_value = *value;
+                    }
+                }
+                _ => {
+                    index_save = Some(index);
+                    save_value = *value;
+                }
+            }
+        }
+        match index_save {
+            Some(v) => match v {
+                0 => Ok(SnakeDirection::UP),
+                1 => Ok(SnakeDirection::DOWN),
+                2 => Ok(SnakeDirection::LEFT),
+                3 => Ok(SnakeDirection::RIGHT),
+                _ => Err(Box::new(MyError("Oops".into()))),
+            },
+            _ => Err(Box::new(MyError("Oops".into()))),
+        }
     }
 }
 
@@ -156,11 +209,17 @@ mod tests {
                     1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
                 ];
                 match nn.compute_move(&snake_inputs) {
-                    Ok(_v) => {}
-                    _ => {}
+                    Ok(_v) => {
+                        println!("Looks fine.");
+                    }
+                    _ => {
+                        assert!(false);
+                    }
                 }
             }
-            _ => {}
+            _ => {
+                assert!(false);
+            }
         }
     }
 }
