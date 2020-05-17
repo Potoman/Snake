@@ -1,7 +1,7 @@
 use std::{error::Error, fmt};
 use tensorflow::{
-    ops, DataType, Output, Scope, Session, SessionOptions, SessionRunArgs, Shape, Status, Tensor,
-    Variable,
+    ops, DataType, Operation, Output, Scope, Session, SessionOptions, SessionRunArgs, Shape,
+    Status, Tensor, Variable,
 };
 
 use crate::snake::SnakeDirection;
@@ -16,8 +16,8 @@ pub fn fitness(apple: u32, frame: u32) -> f64 {
 
 pub struct SnakeNN {
     session: Session,
-    input: tensorflow::Operation,
-    output: tensorflow::Output,
+    input: Operation,
+    output: Output,
 }
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl SnakeNN {
     pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
         let mut scope = Scope::new_root_scope();
         // Input layer :
-        let input: tensorflow::Operation = ops::Placeholder::new()
+        let input: Operation = ops::Placeholder::new()
             .dtype(DataType::Float)
             .shape(Shape::from(&[1u64, 32][..]))
             .build(&mut scope.with_op_name("input"))?;
