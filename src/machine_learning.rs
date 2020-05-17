@@ -1,5 +1,8 @@
 use std::{error::Error, fmt};
-use tensorflow::{ ops, DataType, Output, Scope,Session,SessionOptions,SessionRunArgs,Shape,Status,Tensor,Variable;
+use tensorflow::{
+    ops, DataType, Output, Scope, Session, SessionOptions, SessionRunArgs, Shape, Status, Tensor,
+    Variable,
+};
 
 use crate::snake::SnakeDirection;
 
