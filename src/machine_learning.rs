@@ -83,7 +83,7 @@ impl SnakeNN {
         Ok(result)
     }
 
-    pub fn compute_move(&mut self, inputs: &[f32]) -> Result<SnakeDirection, Box<dyn Error>> {
+    fn compute_nn_output(&mut self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
         let mut run_args = SessionRunArgs::new();
         for (index, input) in inputs.iter().enumerate() {
@@ -96,39 +96,41 @@ impl SnakeNN {
         self.session.run(&mut run_args)?;
 
         let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
-        let intput_up: f32 = result_tensor.get(&[0, 0]);
-        let intput_down: f32 = result_tensor.get(&[0, 1]);
-        let intput_left: f32 = result_tensor.get(&[0, 2]);
-        let intput_right: f32 = result_tensor.get(&[0, 3]);
-        let mut index_save: Option<usize> = None;
-        let mut save_value: f32 = f32::NEG_INFINITY;
-        for (index, value) in [intput_up, intput_down, intput_left, intput_right]
-            .iter()
-            .enumerate()
-        {
-            match index_save {
-                Some(v) => {
-                    if save_value < *value {
-                        index_save = Some(index);
-                        save_value = *value;
-                    }
-                }
-                _ => {
+        Ok([
+            result_tensor.get(&[0, 0]),
+            result_tensor.get(&[0, 1]),
+            result_tensor.get(&[0, 2]),
+            result_tensor.get(&[0, 3]),
+        ])
+    }
+}
+
+fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
+    let mut index_save: Option<usize> = None;
+    let mut save_value: f32 = f32::NEG_INFINITY;
+    for (index, value) in inputs.iter().enumerate() {
+        match index_save {
+            Some(_v) => {
+                if save_value < *value {
                     index_save = Some(index);
                     save_value = *value;
                 }
             }
+            _ => {
+                index_save = Some(index);
+                save_value = *value;
+            }
         }
-        match index_save {
-            Some(v) => match v {
-                0 => Ok(SnakeDirection::UP),
-                1 => Ok(SnakeDirection::DOWN),
-                2 => Ok(SnakeDirection::LEFT),
-                3 => Ok(SnakeDirection::RIGHT),
-                _ => Err(Box::new(MyError("Oops".into()))),
-            },
-            _ => Err(Box::new(MyError("Oops".into()))),
-        }
+    }
+    match index_save {
+        Some(v) => match v {
+            0 => SnakeDirection::UP,
+            1 => SnakeDirection::DOWN,
+            2 => SnakeDirection::LEFT,
+            3 => SnakeDirection::RIGHT,
+            _ => SnakeDirection::UP,
+        },
+        _ => SnakeDirection::UP,
     }
 }
 
@@ -189,26 +191,54 @@ mod tests {
     }
 
     #[test]
-    fn test_nn() {
-        let snake_nn = SnakeNN::new();
-        match snake_nn {
-            Ok(mut nn) => {
-                let snake_inputs: [f32; 32] = [
-                    1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
-                    1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
-                ];
-                match nn.compute_move(&snake_inputs) {
-                    Ok(_v) => {
-                        println!("Looks fine.");
-                    }
-                    _ => {
-                        assert!(false);
-                    }
-                }
-            }
-            _ => {
-                assert!(false);
-            }
+    fn test_compute_nn_output() -> Result<(), Box<dyn Error>> {
+        let mut nn = SnakeNN::new()?;
+        let snake_inputs: [f32; 32] = [
+            1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0,
+            2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
+        ];
+        let output_0 = nn.compute_nn_output(&snake_inputs)?;
+        let output_1 = nn.compute_nn_output(&snake_inputs)?;
+        for (index, value) in output_0.iter().enumerate() {
+            println!("{}", value);
         }
+        for (index, value) in output_1.iter().enumerate() {
+            println!("{}", value);
+        }
+        assert_eq!(output_0, output_1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_compute_move() -> Result<(), Box<dyn Error>> {
+        {
+            let snake_direction = compute_move(&[1.0, 0.0, 0.0, 0.0]);
+            assert_eq!(snake_direction, SnakeDirection::UP);
+        }
+        {
+            let snake_direction = compute_move(&[1.0, 1.0, 0.0, 0.0]);
+            assert_eq!(snake_direction, SnakeDirection::UP);
+        }
+        {
+            let snake_direction = compute_move(&[1.0, 1.0, 1.0, 0.0]);
+            assert_eq!(snake_direction, SnakeDirection::UP);
+        }
+        {
+            let snake_direction = compute_move(&[1.0, 1.0, 1.0, 1.0]);
+            assert_eq!(snake_direction, SnakeDirection::UP);
+        }
+        {
+            let snake_direction = compute_move(&[0.0, 1.0, 0.0, 0.0]);
+            assert_eq!(snake_direction, SnakeDirection::DOWN);
+        }
+        {
+            let snake_direction = compute_move(&[0.0, 0.0, 1.0, 0.0]);
+            assert_eq!(snake_direction, SnakeDirection::LEFT);
+        }
+        {
+            let snake_direction = compute_move(&[0.0, 0.0, 0.0, 1.0]);
+            assert_eq!(snake_direction, SnakeDirection::RIGHT);
+        }
+        Ok(())
     }
 }
