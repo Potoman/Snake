@@ -202,12 +202,6 @@ mod tests {
         ];
         let output_0 = nn.compute_nn_output(&snake_inputs)?;
         let output_1 = nn.compute_nn_output(&snake_inputs)?;
-        for (index, value) in output_0.iter().enumerate() {
-            println!("{}", value);
-        }
-        for (index, value) in output_1.iter().enumerate() {
-            println!("{}", value);
-        }
         assert_eq!(output_0, output_1);
         Ok(())
     }
