@@ -1,16 +1,5 @@
-use std::error::Error;
-use std::fmt;
-use tensorflow::ops;
-use tensorflow::DataType;
-use tensorflow::Output;
-use tensorflow::Scope;
-use tensorflow::Session;
-use tensorflow::SessionOptions;
-use tensorflow::SessionRunArgs;
-use tensorflow::Shape;
-use tensorflow::Status;
-use tensorflow::Tensor;
-use tensorflow::Variable;
+use std::{error::Error, fmt};
+use tensorflow::{ ops, DataType, Output, Scope,Session,SessionOptions,SessionRunArgs,Shape,Status,Tensor,Variable;
 
 use crate::snake::SnakeDirection;
 
