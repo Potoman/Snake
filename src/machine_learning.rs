@@ -18,6 +18,12 @@ pub struct SnakeNN {
     session: Session,
     input: Operation,
     output: Output,
+    weight_layer_1: Weight,
+    weight_layer_2: Weight,
+    weight_layer_out: Weight,
+    bias_layer_1: Bias,
+    bias_layer_2: Bias,
+    bias_layer_out: Bias,
 }
 
 #[derive(Debug)]
@@ -40,7 +46,7 @@ impl SnakeNN {
             .shape(Shape::from(&[1u64, 32][..]))
             .build(&mut scope.with_op_name("input"))?;
         // Hidden layer.
-        let (vars1, layer1) = layer(
+        let (weight_layer_1, bias_layer_1, layer1) = layer(
             input.clone(),
             32,
             20,
@@ -48,7 +54,7 @@ impl SnakeNN {
             &mut scope,
         )?;
         // Hidden layer.
-        let (vars2, layer2) = layer(
+        let (weight_layer_2, bias_layer_2, layer2) = layer(
             layer1.clone(),
             20,
             12,
@@ -56,32 +62,38 @@ impl SnakeNN {
             &mut scope,
         )?;
         // Output layer.
-        let (vars_output, layer_output) = layer(
+        let (weight_layer_out, bias_layer_out, layer_output) = layer(
             layer2.clone(),
             12,
             4,
             &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
             &mut scope,
         )?;
-        let mut variables = Vec::new();
-        variables.extend(vars1);
-        variables.extend(vars2);
-        variables.extend(vars_output);
 
         // Initialize variables :
         let options = SessionOptions::new();
         let g = scope.graph_mut();
         let session = Session::new(&options, &g)?;
         let mut run_args = SessionRunArgs::new();
-        for variable in &variables {
-            run_args.add_target(&variable.initializer());
-        }
+        run_args.add_target(&weight_layer_1.variable.initializer());
+        run_args.add_target(&weight_layer_2.variable.initializer());
+        run_args.add_target(&weight_layer_out.variable.initializer());
+        run_args.add_target(&bias_layer_1.variable.initializer());
+        run_args.add_target(&bias_layer_2.variable.initializer());
+        run_args.add_target(&bias_layer_out.variable.initializer());
+
         session.run(&mut run_args)?;
 
         let result = Self {
             session: session,
             input: input,
             output: layer_output,
+            weight_layer_1,
+            weight_layer_2,
+            weight_layer_out,
+            bias_layer_1,
+            bias_layer_2,
+            bias_layer_out,
         };
         Ok(result)
     }
@@ -137,13 +149,21 @@ fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
     }
 }
 
+struct Bias {
+    variable: Variable,
+}
+
+struct Weight {
+    variable: Variable,
+}
+
 fn layer<O1: Into<Output>>(
     input: O1,
     input_size: u64,
     output_size: u64,
     activation: &dyn Fn(Output, &mut Scope) -> Result<Output, Status>,
     scope: &mut Scope,
-) -> Result<(Vec<Variable>, Output), Status> {
+) -> Result<(Weight, Bias, Output), Status> {
     let mut scope = scope.new_sub_scope("layer");
     let scope = &mut scope;
     let w_shape = ops::constant(&[input_size as i64, output_size as i64][..], scope)?;
@@ -160,7 +180,12 @@ fn layer<O1: Into<Output>>(
         .const_initial_value(Tensor::<f32>::new(&[output_size]))
         .build(&mut scope.with_op_name("b"))?;
     Ok((
-        vec![w.clone(), b.clone()],
+        Weight {
+            variable: w.clone(),
+        },
+        Bias {
+            variable: b.clone(),
+        },
         activation(
             ops::add(
                 ops::mat_mul(input.into(), w.output().clone(), scope)?.into(),
