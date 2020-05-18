@@ -37,6 +37,55 @@ impl fmt::Display for MyError {
 
 impl Error for MyError {}
 
+struct Bias {
+    variable: Variable,
+}
+
+struct Weight {
+    variable: Variable,
+}
+
+fn layer<O1: Into<Output>>(
+    input: O1,
+    input_size: u64,
+    output_size: u64,
+    activation: &dyn Fn(Output, &mut Scope) -> Result<Output, Status>,
+    scope: &mut Scope,
+) -> Result<(Weight, Bias, Output), Status> {
+    let mut scope = scope.new_sub_scope("layer");
+    let scope = &mut scope;
+    let w_shape = ops::constant(&[input_size as i64, output_size as i64][..], scope)?;
+    let w = Variable::builder()
+        .initial_value(
+            ops::RandomStandardNormal::new()
+                .dtype(DataType::Float)
+                .build(w_shape.into(), scope)?,
+        )
+        .data_type(DataType::Float)
+        .shape(Shape::from(&[input_size, output_size][..]))
+        .build(&mut scope.with_op_name("w"))?;
+    let b = Variable::builder()
+        .const_initial_value(Tensor::<f32>::new(&[output_size]))
+        .build(&mut scope.with_op_name("b"))?;
+    Ok((
+        Weight {
+            variable: w.clone(),
+        },
+        Bias {
+            variable: b.clone(),
+        },
+        activation(
+            ops::add(
+                ops::mat_mul(input.into(), w.output().clone(), scope)?.into(),
+                b.output().clone(),
+                scope,
+            )?
+            .into(),
+            scope,
+        )?,
+    ))
+}
+
 impl SnakeNN {
     pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
         let mut scope = Scope::new_root_scope();
@@ -147,55 +196,6 @@ fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
         },
         _ => SnakeDirection::UP,
     }
-}
-
-struct Bias {
-    variable: Variable,
-}
-
-struct Weight {
-    variable: Variable,
-}
-
-fn layer<O1: Into<Output>>(
-    input: O1,
-    input_size: u64,
-    output_size: u64,
-    activation: &dyn Fn(Output, &mut Scope) -> Result<Output, Status>,
-    scope: &mut Scope,
-) -> Result<(Weight, Bias, Output), Status> {
-    let mut scope = scope.new_sub_scope("layer");
-    let scope = &mut scope;
-    let w_shape = ops::constant(&[input_size as i64, output_size as i64][..], scope)?;
-    let w = Variable::builder()
-        .initial_value(
-            ops::RandomStandardNormal::new()
-                .dtype(DataType::Float)
-                .build(w_shape.into(), scope)?,
-        )
-        .data_type(DataType::Float)
-        .shape(Shape::from(&[input_size, output_size][..]))
-        .build(&mut scope.with_op_name("w"))?;
-    let b = Variable::builder()
-        .const_initial_value(Tensor::<f32>::new(&[output_size]))
-        .build(&mut scope.with_op_name("b"))?;
-    Ok((
-        Weight {
-            variable: w.clone(),
-        },
-        Bias {
-            variable: b.clone(),
-        },
-        activation(
-            ops::add(
-                ops::mat_mul(input.into(), w.output().clone(), scope)?.into(),
-                b.output().clone(),
-                scope,
-            )?
-            .into(),
-            scope,
-        )?,
-    ))
 }
 
 #[cfg(test)]
