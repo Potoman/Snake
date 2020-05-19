@@ -149,10 +149,10 @@ impl SnakeNN {
 
     fn compute_nn_output(&mut self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
-        let mut run_args = SessionRunArgs::new();
         for (index, input) in inputs.iter().enumerate() {
             input_tensor[index] = *input;
         }
+        let mut run_args = SessionRunArgs::new();
         run_args.add_feed(&self.input, 0, &input_tensor);
 
         let result_token = run_args.request_fetch(&self.output.operation, self.output.index);
