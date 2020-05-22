@@ -167,6 +167,12 @@ impl SnakeNN {
             result_tensor.get(&[0, 3]),
         ])
     }
+
+    fn next() -> Result<SnakeNN, Box<dyn Error>> {
+        // Here will be a new NN in order to compute the next direction for the snake.
+        // It will contains the crossover and the mutation.
+        SnakeNN::new()
+    }
 }
 
 fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
