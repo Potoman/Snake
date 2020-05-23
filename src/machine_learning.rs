@@ -24,6 +24,8 @@ pub struct SnakeNN {
     bias_layer_1: Bias,
     bias_layer_2: Bias,
     bias_layer_out: Bias,
+    bias_initial_value: Vec<Tensor<f32>>,
+    weight_initial_value: Vec<Operation>,
 }
 
 #[derive(Debug)]
@@ -51,21 +53,21 @@ fn layer<O1: Into<Output>>(
     output_size: u64,
     activation: &dyn Fn(Output, &mut Scope) -> Result<Output, Status>,
     scope: &mut Scope,
-) -> Result<(Weight, Bias, Output), Status> {
+) -> Result<(Weight, Bias, Operation, Tensor<f32>, Output), Status> {
     let mut scope = scope.new_sub_scope("layer");
     let scope = &mut scope;
     let w_shape = ops::constant(&[input_size as i64, output_size as i64][..], scope)?;
+    let w_initial_value: Operation = ops::RandomStandardNormal::new()
+        .dtype(DataType::Float)
+        .build(w_shape.into(), scope)?;
     let w = Variable::builder()
-        .initial_value(
-            ops::RandomStandardNormal::new()
-                .dtype(DataType::Float)
-                .build(w_shape.into(), scope)?,
-        )
+        .initial_value(w_initial_value.clone())
         .data_type(DataType::Float)
         .shape(Shape::from(&[input_size, output_size][..]))
         .build(&mut scope.with_op_name("w"))?;
+    let b_initial_value: Tensor<f32> = Tensor::<f32>::new(&[output_size]);
     let b = Variable::builder()
-        .const_initial_value(Tensor::<f32>::new(&[output_size]))
+        .const_initial_value(b_initial_value.clone())
         .build(&mut scope.with_op_name("b"))?;
     Ok((
         Weight {
@@ -74,6 +76,8 @@ fn layer<O1: Into<Output>>(
         Bias {
             variable: b.clone(),
         },
+        w_initial_value,
+        b_initial_value,
         activation(
             ops::add(
                 ops::mat_mul(input.into(), w.output().clone(), scope)?.into(),
@@ -95,7 +99,7 @@ impl SnakeNN {
             .shape(Shape::from(&[1u64, 32][..]))
             .build(&mut scope.with_op_name("input"))?;
         // Hidden layer.
-        let (weight_layer_1, bias_layer_1, layer1) = layer(
+        let (weight_layer_1, bias_layer_1, w_i_v_1, b_i_v_1, layer1) = layer(
             input.clone(),
             32,
             20,
@@ -103,7 +107,7 @@ impl SnakeNN {
             &mut scope,
         )?;
         // Hidden layer.
-        let (weight_layer_2, bias_layer_2, layer2) = layer(
+        let (weight_layer_2, bias_layer_2, w_i_v_2, b_i_v_2, layer2) = layer(
             layer1.clone(),
             20,
             12,
@@ -111,7 +115,7 @@ impl SnakeNN {
             &mut scope,
         )?;
         // Output layer.
-        let (weight_layer_out, bias_layer_out, layer_output) = layer(
+        let (weight_layer_out, bias_layer_out, w_i_v_o, b_i_v_o, layer_output) = layer(
             layer2.clone(),
             12,
             4,
@@ -143,6 +147,8 @@ impl SnakeNN {
             bias_layer_1,
             bias_layer_2,
             bias_layer_out,
+            bias_initial_value: vec![b_i_v_1, b_i_v_2, b_i_v_o],
+            weight_initial_value: vec![w_i_v_1, w_i_v_2, w_i_v_o],
         };
         Ok(result)
     }
