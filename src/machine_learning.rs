@@ -184,6 +184,32 @@ impl SnakeNN {
         Ok(result)
     }
 
+    fn generate_weight(
+        &mut self,
+        input_size: u64,
+        output_size: u64,
+    ) -> Result<Tensor<f32>, Box<dyn Error>> {
+        let mut scope = Scope::new_root_scope();
+        let mut scope_1 = scope.new_sub_scope("layer");
+        let scope_1 = &mut scope_1;
+
+        let w_shape_1 = ops::constant(&[input_size as i64, output_size as i64][..], scope_1)?;
+        let w_initial_value_1: Operation = ops::RandomStandardNormal::new()
+            .dtype(DataType::Float)
+            .build(w_shape_1.into(), scope_1)?;
+
+        let options = SessionOptions::new();
+        let g = scope.graph_mut();
+        let session = Session::new(&options, &g)?;
+        let mut run_args = SessionRunArgs::new();
+
+        let result_token = run_args.request_fetch(&self.weight_initial_value[0], 0);
+        self.session.run(&mut run_args)?;
+
+        let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
+        Ok(result_tensor)
+    }
+
     fn compute_nn_output(&mut self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
         for (index, input) in inputs.iter().enumerate() {
@@ -303,6 +329,30 @@ mod tests {
         {
             let snake_direction = compute_move(&[0.0, 0.0, 0.0, 1.0]);
             assert_eq!(snake_direction, SnakeDirection::RIGHT);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_weight() -> Result<(), Box<dyn Error>> {
+        let mut nn = SnakeNN::new()?;
+        let weights: Tensor<f32> = nn.generate_weight(32, 20)?;
+        assert_eq!(s, weights.shape());
+        match weights.shape()[0] {
+            Some(v) => {
+                assert_eq!(v, 32);
+            }
+            _ => {
+                assert_eq!(0, 1);
+            }
+        }
+        match weights.shape()[1] {
+            Some(v) => {
+                assert_eq!(v, 20);
+            }
+            _ => {
+                assert_eq!(0, 1);
+            }
         }
         Ok(())
     }
