@@ -337,7 +337,6 @@ mod tests {
     fn test_generate_weight() -> Result<(), Box<dyn Error>> {
         let mut nn = SnakeNN::new()?;
         let weights: Tensor<f32> = nn.generate_weight(32, 20)?;
-        assert_eq!(s, weights.shape());
         match weights.shape()[0] {
             Some(v) => {
                 assert_eq!(v, 32);
