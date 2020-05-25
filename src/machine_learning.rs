@@ -184,32 +184,6 @@ impl SnakeNN {
         Ok(result)
     }
 
-    fn generate_weight(
-        &mut self,
-        input_size: u64,
-        output_size: u64,
-    ) -> Result<Tensor<f32>, Box<dyn Error>> {
-        let mut scope = Scope::new_root_scope();
-        let mut scope_1 = scope.new_sub_scope("layer");
-        let scope_1 = &mut scope_1;
-
-        let w_shape_1 = ops::constant(&[input_size as i64, output_size as i64][..], scope_1)?;
-        let w_initial_value_1: Operation = ops::RandomStandardNormal::new()
-            .dtype(DataType::Float)
-            .build(w_shape_1.into(), scope_1)?;
-
-        let options = SessionOptions::new();
-        let g = scope.graph_mut();
-        let session = Session::new(&options, &g)?;
-        let mut run_args = SessionRunArgs::new();
-
-        let result_token = run_args.request_fetch(&self.weight_initial_value[0], 0);
-        self.session.run(&mut run_args)?;
-
-        let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
-        Ok(result_tensor)
-    }
-
     fn compute_nn_output(&mut self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
         for (index, input) in inputs.iter().enumerate() {
@@ -265,6 +239,28 @@ fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
         },
         _ => SnakeDirection::UP,
     }
+}
+
+fn generate_weight(input_size: u64, output_size: u64) -> Result<Tensor<f32>, Box<dyn Error>> {
+    let mut scope = Scope::new_root_scope();
+    let mut scope_1 = scope.new_sub_scope("layer");
+    let scope_1 = &mut scope_1;
+
+    let w_shape_1 = ops::constant(&[input_size as i64, output_size as i64][..], scope_1)?;
+    let w_initial_value_1: Operation = ops::RandomStandardNormal::new()
+        .dtype(DataType::Float)
+        .build(w_shape_1.into(), scope_1)?;
+
+    let options = SessionOptions::new();
+    let g = scope.graph_mut();
+    let session = Session::new(&options, &g)?;
+    let mut run_args = SessionRunArgs::new();
+
+    let result_token = run_args.request_fetch(&w_initial_value_1, 0);
+    session.run(&mut run_args)?;
+
+    let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
+    Ok(result_tensor)
 }
 
 #[cfg(test)]
@@ -335,8 +331,7 @@ mod tests {
 
     #[test]
     fn test_generate_weight() -> Result<(), Box<dyn Error>> {
-        let mut nn = SnakeNN::new()?;
-        let weight: Tensor<f32> = nn.generate_weight(32, 20)?;
+        let weight: Tensor<f32> = generate_weight(32, 20)?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
         Ok(())
