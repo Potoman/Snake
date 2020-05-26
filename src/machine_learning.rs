@@ -49,8 +49,6 @@ struct Weight {
 
 fn layer<O1: Into<Output>>(
     input: O1,
-    input_size: u64,
-    output_size: u64,
     activation: &dyn Fn(Output, &mut Scope) -> Result<Output, Status>,
     scope: &mut Scope,
     weight_initial_value: Tensor<f32>,
@@ -101,8 +99,6 @@ impl SnakeNN {
         // Hidden layer.
         let (weight_layer_1, bias_layer_1, layer1) = layer(
             input.clone(),
-            32,
-            20,
             &|x, scope_1| Ok(ops::relu(x, scope_1)?.into()),
             scope_1,
             w_initial_value_1.clone(),
@@ -118,8 +114,6 @@ impl SnakeNN {
         // Hidden layer.
         let (weight_layer_2, bias_layer_2, layer2) = layer(
             layer1.clone(),
-            20,
-            12,
             &|x, scope| Ok(ops::relu(x, scope)?.into()),
             scope_2,
             w_initial_value_2.clone(),
@@ -135,8 +129,6 @@ impl SnakeNN {
         // Output layer.
         let (weight_layer_out, bias_layer_out, layer_output) = layer(
             layer2.clone(),
-            12,
-            4,
             &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
             scope_o,
             w_initial_value_o.clone(),
@@ -195,8 +187,6 @@ impl SnakeNN {
         // Hidden layer.
         let (weight_layer_1, bias_layer_1, layer1) = layer(
             input.clone(),
-            32,
-            20,
             &|x, scope_1| Ok(ops::relu(x, scope_1)?.into()),
             scope_1,
             weight_hidden_1.clone(),
@@ -209,8 +199,6 @@ impl SnakeNN {
         // Hidden layer.
         let (weight_layer_2, bias_layer_2, layer2) = layer(
             layer1.clone(),
-            20,
-            12,
             &|x, scope| Ok(ops::relu(x, scope)?.into()),
             scope_2,
             weight_hidden_2.clone(),
@@ -223,8 +211,6 @@ impl SnakeNN {
         // Output layer.
         let (weight_layer_out, bias_layer_out, layer_output) = layer(
             layer2.clone(),
-            12,
-            4,
             &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
             scope_o,
             weight_output.clone(),
