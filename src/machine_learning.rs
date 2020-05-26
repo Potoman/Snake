@@ -94,7 +94,7 @@ impl SnakeNN {
         )?)
     }
 
-    pub fn new_with_weight(
+    pub fn new_with_param(
         input_size: u64,
         bias_hidden_1: Tensor<f32>,
         bias_hidden_2: Tensor<f32>,
