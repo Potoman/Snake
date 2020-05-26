@@ -317,7 +317,10 @@ fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
     }
 }
 
-fn generate_weight(input_size: u64, output_size: u64) -> Result<Tensor<f32>, Box<dyn Error>> {
+fn generate_random_standard_normal_tensor(
+    input_size: u64,
+    output_size: u64,
+) -> Result<Tensor<f32>, Box<dyn Error>> {
     let mut scope = Scope::new_root_scope();
     let mut scope_1 = scope.new_sub_scope("layer");
     let scope_1 = &mut scope_1;
@@ -407,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_generate_weight() -> Result<(), Box<dyn Error>> {
-        let weight: Tensor<f32> = generate_weight(32, 20)?;
+        let weight: Tensor<f32> = generate_random_standard_normal_tensor(32, 20)?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
         Ok(())
