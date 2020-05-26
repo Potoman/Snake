@@ -174,6 +174,7 @@ impl SnakeNN {
     }
 
     pub fn new_with_weight(
+        input_size: u64,
         bias_hidden_1: Tensor<f32>,
         bias_hidden_2: Tensor<f32>,
         bias_output: Tensor<f32>,
@@ -185,7 +186,7 @@ impl SnakeNN {
         // Input layer :
         let input: Operation = ops::Placeholder::new()
             .dtype(DataType::Float)
-            .shape(Shape::from(&[1u64, 32][..]))
+            .shape(Shape::from(&[1u64, input_size][..]))
             .build(&mut scope.with_op_name("input"))?;
 
         let mut scope_1 = scope.new_sub_scope("layer");
