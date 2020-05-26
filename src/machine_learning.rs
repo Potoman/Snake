@@ -184,6 +184,105 @@ impl SnakeNN {
         Ok(result)
     }
 
+    pub fn new_with_weight(
+        bias_hidden_1: Tensor<f32>,
+        bias_hidden_2: Tensor<f32>,
+        bias_output: Tensor<f32>,
+    ) -> Result<SnakeNN, Box<dyn Error>> {
+        let mut scope = Scope::new_root_scope();
+        // Input layer :
+        let input: Operation = ops::Placeholder::new()
+            .dtype(DataType::Float)
+            .shape(Shape::from(&[1u64, 32][..]))
+            .build(&mut scope.with_op_name("input"))?;
+
+        let mut scope_1 = scope.new_sub_scope("layer");
+        let scope_1 = &mut scope_1;
+
+        let w_shape_1 = ops::constant(&[32 as i64, 20 as i64][..], scope_1)?;
+        let w_initial_value_1: Operation = ops::RandomStandardNormal::new()
+            .dtype(DataType::Float)
+            .build(w_shape_1.into(), scope_1)?;
+
+        // Hidden layer.
+        let (weight_layer_1, bias_layer_1, layer1) = layer(
+            input.clone(),
+            32,
+            20,
+            &|x, scope_1| Ok(ops::relu(x, scope_1)?.into()),
+            scope_1,
+            w_initial_value_1.clone(),
+            bias_hidden_1.clone(),
+        )?;
+
+        let mut scope_2 = scope.new_sub_scope("layer");
+        let scope_2 = &mut scope_2;
+
+        let w_shape_2 = ops::constant(&[20 as i64, 12 as i64][..], scope_2)?;
+        let w_initial_value_2: Operation = ops::RandomStandardNormal::new()
+            .dtype(DataType::Float)
+            .build(w_shape_2.into(), scope_2)?;
+
+        // Hidden layer.
+        let (weight_layer_2, bias_layer_2, layer2) = layer(
+            layer1.clone(),
+            20,
+            12,
+            &|x, scope| Ok(ops::relu(x, scope)?.into()),
+            scope_2,
+            w_initial_value_2.clone(),
+            bias_hidden_2.clone(),
+        )?;
+
+        let mut scope_o = scope.new_sub_scope("layer");
+        let scope_o = &mut scope_o;
+
+        let w_shape_o = ops::constant(&[12 as i64, 4 as i64][..], scope_o)?;
+        let w_initial_value_o: Operation = ops::RandomStandardNormal::new()
+            .dtype(DataType::Float)
+            .build(w_shape_o.into(), scope_o)?;
+
+        // Output layer.
+        let (weight_layer_out, bias_layer_out, layer_output) = layer(
+            layer2.clone(),
+            12,
+            4,
+            &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
+            scope_o,
+            w_initial_value_o.clone(),
+            bias_output.clone(),
+        )?;
+
+        // Initialize variables :
+        let options = SessionOptions::new();
+        let g = scope.graph_mut();
+        let session = Session::new(&options, &g)?;
+        let mut run_args = SessionRunArgs::new();
+        run_args.add_target(&weight_layer_1.variable.initializer());
+        run_args.add_target(&weight_layer_2.variable.initializer());
+        run_args.add_target(&weight_layer_out.variable.initializer());
+        run_args.add_target(&bias_layer_1.variable.initializer());
+        run_args.add_target(&bias_layer_2.variable.initializer());
+        run_args.add_target(&bias_layer_out.variable.initializer());
+
+        session.run(&mut run_args)?;
+
+        let result = Self {
+            session: session,
+            input: input,
+            output: layer_output,
+            weight_layer_1,
+            weight_layer_2,
+            weight_layer_out,
+            bias_layer_1,
+            bias_layer_2,
+            bias_layer_out,
+            bias_initial_value: vec![bias_hidden_1, bias_hidden_2, bias_output],
+            weight_initial_value: vec![w_initial_value_1, w_initial_value_2, w_initial_value_o],
+        };
+        Ok(result)
+    }
+
     fn compute_nn_output(&mut self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
         for (index, input) in inputs.iter().enumerate() {
