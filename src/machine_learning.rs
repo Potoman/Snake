@@ -185,9 +185,26 @@ impl SnakeNN {
         ])
     }
 
-    fn next() -> Result<SnakeNN, Box<dyn Error>> {
-        // Here will be a new NN in order to compute the next direction for the snake.
-        // It will contains the crossover and the mutation.
+    fn next(&self) -> Result<SnakeNN, Box<dyn Error>> {
+        // TODO : try to avoiding two copy here...
+        let bias_1 = self.bias_initial_value[0].clone();
+        let bias_2 = self.bias_initial_value[1].clone();
+        let bias_o = self.bias_initial_value[2].clone();
+        let weight_1 = self.weight_initial_value[0].clone();
+        let weight_2 = self.weight_initial_value[1].clone();
+        let weight_o = self.weight_initial_value[2].clone();
+        mute_gen(&bias_1);
+        mute_gen(&bias_2);
+        mute_gen(&bias_o);
+        mute_gen(&weight_1);
+        mute_gen(&weight_2);
+        mute_gen(&weight_o);
+        SnakeNN::new_with_param(32, bias_1, bias_2, bias_o, weight_1, weight_2, weight_o)
+    }
+
+    fn make_child(&mut self, snake: &SnakeNN) -> Result<SnakeNN, Box<dyn Error>> {
+        // TODO : implement it.
+        // Make child with the given parent.
         SnakeNN::new()
     }
 }
@@ -244,6 +261,11 @@ fn generate_random_standard_normal_tensor(
 
     let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
     Ok(result_tensor)
+}
+
+fn mute_gen(tensor: &Tensor<f32>) -> &Tensor<f32> {
+    // TODO : implement it.
+    tensor
 }
 
 #[cfg(test)]
