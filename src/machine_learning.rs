@@ -257,6 +257,31 @@ fn generate_random_standard_normal_tensor(
     Ok(result_tensor)
 }
 
+fn generate_random_uniform_tensor(
+    input_size: u64,
+    output_size: u64,
+) -> Result<Tensor<f32>, Box<dyn Error>> {
+    let mut scope = Scope::new_root_scope();
+    let mut scope_1 = scope.new_sub_scope("layer");
+    let scope_1 = &mut scope_1;
+
+    let w_shape_1 = ops::constant(&[input_size as i64, output_size as i64][..], scope_1)?;
+    let w_initial_value_1: Operation = ops::RandomUniform::new()
+        .dtype(DataType::Float)
+        .build(w_shape_1.into(), scope_1)?;
+
+    let options = SessionOptions::new();
+    let g = scope.graph_mut();
+    let session = Session::new(&options, &g)?;
+    let mut run_args = SessionRunArgs::new();
+
+    let result_token = run_args.request_fetch(&w_initial_value_1, 0);
+    session.run(&mut run_args)?;
+
+    let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
+    Ok(result_tensor)
+}
+
 fn mute_gen(tensor: &Tensor<f32>) -> &Tensor<f32> {
     // TODO : implement it.
     tensor
