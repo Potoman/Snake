@@ -201,12 +201,6 @@ impl SnakeNN {
         mute_gen(&weight_o);
         SnakeNN::new_with_param(32, bias_1, bias_2, bias_o, weight_1, weight_2, weight_o)
     }
-
-    fn make_child(&mut self, snake: &SnakeNN) -> Result<SnakeNN, Box<dyn Error>> {
-        // TODO : implement it.
-        // Make child with the given parent.
-        SnakeNN::new()
-    }
 }
 
 fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
