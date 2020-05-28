@@ -79,12 +79,12 @@ impl SnakeNN {
     pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
         Ok(SnakeNN::new_with_param(
             32,
-            generate_random_standard_normal_tensor(1, 20)?,
-            generate_random_standard_normal_tensor(1, 12)?,
-            generate_random_standard_normal_tensor(1, 4)?,
-            generate_random_standard_normal_tensor(32, 20)?,
-            generate_random_standard_normal_tensor(20, 12)?,
-            generate_random_standard_normal_tensor(12, 4)?,
+            generate_random_uniform_tensor(1, 20)?,
+            generate_random_uniform_tensor(1, 12)?,
+            generate_random_uniform_tensor(1, 4)?,
+            generate_random_uniform_tensor(32, 20)?,
+            generate_random_uniform_tensor(20, 12)?,
+            generate_random_uniform_tensor(12, 4)?,
         )?)
     }
 
