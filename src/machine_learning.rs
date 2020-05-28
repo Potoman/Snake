@@ -79,12 +79,12 @@ impl SnakeNN {
     pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
         Ok(SnakeNN::new_with_param(
             32,
-            generate_random_uniform_tensor(1, 20)?,
-            generate_random_uniform_tensor(1, 12)?,
-            generate_random_uniform_tensor(1, 4)?,
-            generate_random_uniform_tensor(32, 20)?,
-            generate_random_uniform_tensor(20, 12)?,
-            generate_random_uniform_tensor(12, 4)?,
+            generate_random_uniform_tensor([1, 20])?,
+            generate_random_uniform_tensor([1, 12])?,
+            generate_random_uniform_tensor([1, 4])?,
+            generate_random_uniform_tensor([32, 20])?,
+            generate_random_uniform_tensor([20, 12])?,
+            generate_random_uniform_tensor([12, 4])?,
         )?)
     }
 
@@ -232,15 +232,12 @@ fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
     }
 }
 
-fn generate_random_standard_normal_tensor(
-    input_size: u64,
-    output_size: u64,
-) -> Result<Tensor<f32>, Box<dyn Error>> {
+fn generate_random_standard_normal_tensor(size: [i64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
     let mut scope = Scope::new_root_scope();
     let mut scope_1 = scope.new_sub_scope("layer");
     let scope_1 = &mut scope_1;
 
-    let w_shape_1 = ops::constant(&[input_size as i64, output_size as i64][..], scope_1)?;
+    let w_shape_1 = ops::constant(&[size[0], size[1]][..], scope_1)?;
     let w_initial_value_1: Operation = ops::RandomStandardNormal::new()
         .dtype(DataType::Float)
         .build(w_shape_1.into(), scope_1)?;
@@ -257,15 +254,12 @@ fn generate_random_standard_normal_tensor(
     Ok(result_tensor)
 }
 
-fn generate_random_uniform_tensor(
-    input_size: u64,
-    output_size: u64,
-) -> Result<Tensor<f32>, Box<dyn Error>> {
+fn generate_random_uniform_tensor(size: [i64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
     let mut scope = Scope::new_root_scope();
     let mut scope_1 = scope.new_sub_scope("layer");
     let scope_1 = &mut scope_1;
 
-    let w_shape_1 = ops::constant(&[input_size as i64, output_size as i64][..], scope_1)?;
+    let w_shape_1 = ops::constant(&[size[0], size[1]][..], scope_1)?;
     let w_initial_value_1: Operation = ops::RandomUniform::new()
         .dtype(DataType::Float)
         .build(w_shape_1.into(), scope_1)?;
@@ -355,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_generate_random_standard_normal_tensor() -> Result<(), Box<dyn Error>> {
-        let weight: Tensor<f32> = generate_random_standard_normal_tensor(32, 20)?;
+        let weight: Tensor<f32> = generate_random_standard_normal_tensor([32, 20])?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
         Ok(())
@@ -363,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_generate_random_uniform_tensor() -> Result<(), Box<dyn Error>> {
-        let weight: Tensor<f32> = generate_random_uniform_tensor(32, 20)?;
+        let weight: Tensor<f32> = generate_random_uniform_tensor([32, 20])?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
         Ok(())
