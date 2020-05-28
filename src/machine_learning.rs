@@ -354,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_weight() -> Result<(), Box<dyn Error>> {
+    fn test_generate_random_standard_normal_tensor() -> Result<(), Box<dyn Error>> {
         let weight: Tensor<f32> = generate_random_standard_normal_tensor(32, 20)?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
