@@ -360,4 +360,12 @@ mod tests {
         assert_eq!(weight.shape(), expected_weight);
         Ok(())
     }
+
+    #[test]
+    fn test_generate_random_uniform_tensor() -> Result<(), Box<dyn Error>> {
+        let weight: Tensor<f32> = generate_random_uniform_tensor(32, 20)?;
+        let expected_weight = Shape::from(&[32u64, 20][..]);
+        assert_eq!(weight.shape(), expected_weight);
+        Ok(())
+    }
 }
