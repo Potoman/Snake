@@ -79,12 +79,12 @@ impl SnakeNN {
     pub fn new() -> Result<SnakeNN, Box<dyn Error>> {
         Ok(SnakeNN::new_with_param(
             32,
-            generate_random_uniform_tensor([1, 20])?,
-            generate_random_uniform_tensor([1, 12])?,
-            generate_random_uniform_tensor([1, 4])?,
-            generate_random_uniform_tensor([32, 20])?,
-            generate_random_uniform_tensor([20, 12])?,
-            generate_random_uniform_tensor([12, 4])?,
+            TensorProvider.gen([1, 20])?,
+            TensorProvider.gen([1, 12])?,
+            TensorProvider.gen([1, 4])?,
+            TensorProvider.gen([32, 20])?,
+            TensorProvider.gen([20, 12])?,
+            TensorProvider.gen([12, 4])?,
         )?)
     }
 
@@ -232,6 +232,61 @@ fn compute_move(inputs: &[f32; 4]) -> SnakeDirection {
     }
 }
 
+trait OverloadedGenTensor<T> {
+    fn overloaded_gen_tensor(&self, size: T) -> Result<Tensor<f32>, Box<dyn Error>>;
+}
+
+struct TensorProvider;
+
+impl TensorProvider {
+    fn gen<T>(&self, size: T) -> Result<Tensor<f32>, Box<dyn Error>>
+    where
+        Self: OverloadedGenTensor<T>,
+    {
+        self.overloaded_gen_tensor(size)
+    }
+}
+
+impl OverloadedGenTensor<[u64; 2]> for TensorProvider {
+    fn overloaded_gen_tensor(&self, size: [u64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
+        let mut scope = Scope::new_root_scope();
+        let mut scope_1 = scope.new_sub_scope("layer");
+        let scope_1 = &mut scope_1;
+
+        let w_shape_1 = ops::constant(&[size[0], size[1]][..], scope_1)?;
+        let w_initial_value_1: Operation = ops::RandomUniform::new()
+            .dtype(DataType::Float)
+            .build(w_shape_1.into(), scope_1)?;
+
+        let options = SessionOptions::new();
+        let g = scope.graph_mut();
+        let session = Session::new(&options, &g)?;
+        let mut run_args = SessionRunArgs::new();
+
+        let result_token = run_args.request_fetch(&w_initial_value_1, 0);
+        session.run(&mut run_args)?;
+
+        let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
+        Ok(result_tensor)
+    }
+}
+
+impl OverloadedGenTensor<Shape> for TensorProvider {
+    fn overloaded_gen_tensor(&self, size: Shape) -> Result<Tensor<f32>, Box<dyn Error>> {
+        let a = size[0];
+        match a {
+            Some(v) => {
+                let b = size[1];
+                match b {
+                    Some(w) => self.overloaded_gen_tensor([v as u64, w as u64]),
+                    _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
+                }
+            }
+            _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
+        }
+    }
+}
+
 fn generate_random_standard_normal_tensor(size: [i64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
     let mut scope = Scope::new_root_scope();
     let mut scope_1 = scope.new_sub_scope("layer");
@@ -254,31 +309,9 @@ fn generate_random_standard_normal_tensor(size: [i64; 2]) -> Result<Tensor<f32>,
     Ok(result_tensor)
 }
 
-fn generate_random_uniform_tensor(size: [i64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
-    let mut scope = Scope::new_root_scope();
-    let mut scope_1 = scope.new_sub_scope("layer");
-    let scope_1 = &mut scope_1;
-
-    let w_shape_1 = ops::constant(&[size[0], size[1]][..], scope_1)?;
-    let w_initial_value_1: Operation = ops::RandomUniform::new()
-        .dtype(DataType::Float)
-        .build(w_shape_1.into(), scope_1)?;
-
-    let options = SessionOptions::new();
-    let g = scope.graph_mut();
-    let session = Session::new(&options, &g)?;
-    let mut run_args = SessionRunArgs::new();
-
-    let result_token = run_args.request_fetch(&w_initial_value_1, 0);
-    session.run(&mut run_args)?;
-
-    let result_tensor: Tensor<f32> = run_args.fetch::<f32>(result_token)?;
-    Ok(result_tensor)
-}
-
-fn mute_gen(tensor: &Tensor<f32>) -> &Tensor<f32> {
-    // TODO : implement it.
-    tensor
+fn mute_gen(tensor: &Tensor<f32>) -> Result<Tensor<f32>, Box<dyn Error>> {
+    let tensor_normal = TensorProvider.gen(tensor.shape())?;
+    Ok(tensor_normal)
 }
 
 #[cfg(test)]
@@ -357,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_generate_random_uniform_tensor() -> Result<(), Box<dyn Error>> {
-        let weight: Tensor<f32> = generate_random_uniform_tensor([32, 20])?;
+        let weight: Tensor<f32> = TensorProvider.gen([32, 20])?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
         Ok(())
