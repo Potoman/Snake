@@ -187,18 +187,18 @@ impl SnakeNN {
 
     fn next(&self) -> Result<SnakeNN, Box<dyn Error>> {
         // TODO : try to avoiding two copy here...
-        let bias_1 = self.bias_initial_value[0].clone();
-        let bias_2 = self.bias_initial_value[1].clone();
-        let bias_o = self.bias_initial_value[2].clone();
-        let weight_1 = self.weight_initial_value[0].clone();
-        let weight_2 = self.weight_initial_value[1].clone();
-        let weight_o = self.weight_initial_value[2].clone();
-        mute_gen(&bias_1);
-        mute_gen(&bias_2);
-        mute_gen(&bias_o);
-        mute_gen(&weight_1);
-        mute_gen(&weight_2);
-        mute_gen(&weight_o);
+        let mut bias_1 = self.bias_initial_value[0].clone();
+        let mut bias_2 = self.bias_initial_value[1].clone();
+        let mut bias_o = self.bias_initial_value[2].clone();
+        let mut weight_1 = self.weight_initial_value[0].clone();
+        let mut weight_2 = self.weight_initial_value[1].clone();
+        let mut weight_o = self.weight_initial_value[2].clone();
+        mute_gen(&mut bias_1);
+        mute_gen(&mut bias_2);
+        mute_gen(&mut bias_o);
+        mute_gen(&mut weight_1);
+        mute_gen(&mut weight_2);
+        mute_gen(&mut weight_o);
         SnakeNN::new_with_param(32, bias_1, bias_2, bias_o, weight_1, weight_2, weight_o)
     }
 }
@@ -309,8 +309,15 @@ fn generate_random_standard_normal_tensor(size: [i64; 2]) -> Result<Tensor<f32>,
     Ok(result_tensor)
 }
 
-fn mute_gen(tensor: &Tensor<f32>) -> Result<Tensor<f32>, Box<dyn Error>> {
+fn mute_gen(tensor: &mut Tensor<f32>) -> Result<Tensor<f32>, Box<dyn Error>> {
     let tensor_normal = TensorProvider.gen(tensor.shape())?;
+    for i in tensor.shape()[0] {
+        for j in tensor.shape()[1] {
+            let x = i as u64;
+            let y = j as u64;
+            tensor.set(&[x, y], tensor.get(&[x, y]) + tensor_normal.get(&[x, y]));
+        }
+    }
     Ok(tensor_normal)
 }
 
