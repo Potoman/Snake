@@ -314,24 +314,32 @@ fn generate_random_standard_normal_tensor(size: [i64; 2]) -> Result<Tensor<f32>,
 struct Adder(Tensor<f32>);
 
 impl std::ops::Add<&Tensor<f32>> for Adder {
-    type Output = Tensor<f32>;
+    type Output = Result<Tensor<f32>, Box<dyn Error>>;
 
-    fn add(mut self, _tensor: &Tensor<f32>) -> Tensor<f32> {
-        for i in _tensor.shape()[0] {
-            for j in _tensor.shape()[1] {
-                let x = i as u64;
-                let y = j as u64;
-                self.0
-                    .set(&[x, y], self.0.get(&[x, y]) + _tensor.get(&[x, y]));
-            }
+    fn add(mut self, _tensor: &Tensor<f32>) -> Result<Tensor<f32>, Box<dyn Error>> {
+        match _tensor.shape()[0] {
+            Some(i) => match _tensor.shape()[1] {
+                Some(j) => {
+                    for _i in 0..i {
+                        for _j in 0..j {
+                            let x = _i as u64;
+                            let y = _j as u64;
+                            self.0
+                                .set(&[x, y], self.0.get(&[x, y]) + _tensor.get(&[x, y]));
+                        }
+                    }
+                    Ok(self.0)
+                }
+                _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
+            },
+            _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
         }
-        self.0
     }
 }
 
 fn mute_gen(tensor: &Tensor<f32>) -> Result<Tensor<f32>, Box<dyn Error>> {
     let output_tensor = TensorProvider.gen(tensor.shape())?;
-    Ok(Adder(output_tensor) + tensor)
+    Adder(output_tensor) + tensor
 }
 
 #[cfg(test)]
@@ -413,6 +421,26 @@ mod tests {
         let weight: Tensor<f32> = TensorProvider.gen([32, 20])?;
         let expected_weight = Shape::from(&[32u64, 20][..]);
         assert_eq!(weight.shape(), expected_weight);
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_tensor() -> Result<(), Box<dyn Error>> {
+        let mut tensor_a = generate_random_standard_normal_tensor([2, 2])?;
+        let mut tensor_b = generate_random_standard_normal_tensor([2, 2])?;
+        tensor_a.set(&[0, 0], 1.0);
+        tensor_b.set(&[0, 0], 2.0);
+        tensor_a.set(&[0, 1], 3.0);
+        tensor_b.set(&[0, 1], 4.0);
+        tensor_a.set(&[1, 0], 5.0);
+        tensor_b.set(&[1, 0], 6.0);
+        tensor_a.set(&[1, 1], 7.0);
+        tensor_b.set(&[1, 1], 8.0);
+        let tensor_c = (Adder(tensor_a) + &tensor_b)?;
+        assert_eq!(tensor_c.get(&[0, 0]), 3.0);
+        assert_eq!(tensor_c.get(&[0, 1]), 7.0);
+        assert_eq!(tensor_c.get(&[1, 0]), 11.0);
+        assert_eq!(tensor_c.get(&[1, 1]), 15.0);
         Ok(())
     }
 }
