@@ -20,6 +20,18 @@ pub struct SnakeNN {
     output: Output,
     bias_initial_value: Vec<Tensor<f32>>,
     weight_initial_value: Vec<Tensor<f32>>,
+    w_placeholder_1: Operation,
+    w_assign_1: Operation,
+    b_placeholder_1: Operation,
+    b_assign_1: Operation,
+    w_placeholder_2: Operation,
+    w_assign_2: Operation,
+    b_placeholder_2: Operation,
+    b_assign_2: Operation,
+    w_placeholder_out: Operation,
+    w_assign_out: Operation,
+    b_placeholder_out: Operation,
+    b_assign_out: Operation,
 }
 
 #[derive(Debug)]
@@ -47,15 +59,39 @@ fn layer<O1: Into<Output>>(
     scope: &mut Scope,
     weight_initial_value: Tensor<f32>,
     bias_initial_value: Tensor<f32>,
-) -> Result<(Weight, Bias, Output), Status> {
+) -> Result<
+    (
+        Weight,
+        Bias,
+        Operation,
+        Operation,
+        Operation,
+        Operation,
+        Output,
+    ),
+    Status,
+> {
     let mut scope = scope.new_sub_scope("layer");
     let scope = &mut scope;
-    let w = Variable::builder()
+    let w: &Variable = &Variable::builder()
         .const_initial_value(weight_initial_value.clone())
         .build(&mut scope.with_op_name("w"))?;
+
+    let w_placeholder = ops::Placeholder::new()
+        .dtype(w.data_type())
+        .shape(w.shape().clone())
+        .build(&mut scope.with_op_name("w1_placeholder"))?;
+    let w_assign = ops::assign(w.output().clone(), w_placeholder.clone().into(), scope)?;
+
     let b = Variable::builder()
         .const_initial_value(bias_initial_value.clone())
         .build(&mut scope.with_op_name("b"))?;
+
+    let b_placeholder = ops::Placeholder::new()
+        .dtype(b.data_type())
+        .shape(b.shape().clone())
+        .build(&mut scope.with_op_name("b1_placeholder"))?;
+    let b_assign = ops::assign(b.output().clone(), b_placeholder.clone().into(), scope)?;
     Ok((
         Weight {
             variable: w.clone(),
@@ -63,6 +99,10 @@ fn layer<O1: Into<Output>>(
         Bias {
             variable: b.clone(),
         },
+        w_placeholder.clone(),
+        w_assign.clone(),
+        b_placeholder.clone(),
+        b_assign.clone(),
         activation(
             ops::add(
                 ops::mat_mul(input.into(), w.output().clone(), scope)?.into(),
@@ -108,7 +148,15 @@ impl SnakeNN {
         let scope_1 = &mut scope_1;
 
         // Hidden layer.
-        let (weight_layer_1, bias_layer_1, layer1) = layer(
+        let (
+            weight_layer_1,
+            bias_layer_1,
+            w_placeholder_1,
+            w_assign_1,
+            b_placeholder_1,
+            b_assign_1,
+            layer1,
+        ) = layer(
             input.clone(),
             &|x, scope_1| Ok(ops::relu(x, scope_1)?.into()),
             scope_1,
@@ -120,7 +168,15 @@ impl SnakeNN {
         let scope_2 = &mut scope_2;
 
         // Hidden layer.
-        let (weight_layer_2, bias_layer_2, layer2) = layer(
+        let (
+            weight_layer_2,
+            bias_layer_2,
+            w_placeholder_2,
+            w_assign_2,
+            b_placeholder_2,
+            b_assign_2,
+            layer2,
+        ) = layer(
             layer1.clone(),
             &|x, scope| Ok(ops::relu(x, scope)?.into()),
             scope_2,
@@ -132,7 +188,15 @@ impl SnakeNN {
         let scope_o = &mut scope_o;
 
         // Output layer.
-        let (weight_layer_out, bias_layer_out, layer_output) = layer(
+        let (
+            weight_layer_out,
+            bias_layer_out,
+            w_placeholder_out,
+            w_assign_out,
+            b_placeholder_out,
+            b_assign_out,
+            layer_output,
+        ) = layer(
             layer2.clone(),
             &|x, scope| Ok(ops::sigmoid(x, scope)?.into()),
             scope_o,
@@ -174,6 +238,19 @@ impl SnakeNN {
             b_assign_out,
         };
         Ok(result)
+    }
+
+    fn set_new_value(
+        &self,
+        data: &Tensor<f32>,
+        placeholder: &Operation,
+        assign: &Operation,
+    ) -> Result<(), Box<dyn Error>> {
+        let mut run_args = SessionRunArgs::new();
+        run_args.add_feed(&placeholder, 0, data);
+        run_args.add_target(&assign);
+        self.session.run(&mut run_args)?;
+        Ok(())
     }
 
     fn compute_nn_output(&self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
@@ -368,6 +445,49 @@ mod tests {
             fitness(16 * 16, 16 * 16 * 1000),
             115792089237316200000000000000000000000000000000000000000000000000000000000000.0
         );
+    }
+
+    #[test]
+    fn test_set_new_value() -> Result<(), Box<dyn Error>> {
+        let nn = SnakeNN::new()?;
+
+        // Init first layer :
+        let mut weight = Tensor::<f32>::new(&[32, 20]);
+        {
+            let mut m_w = &mut weight;
+            m_w.set(&[0, 0], 1.0);
+        }
+        nn.set_new_value(&weight, &nn.w_placeholder_1, &nn.w_assign_1)?;
+        let bias = Tensor::<f32>::new(&[1, 20]);
+        nn.set_new_value(&bias, &nn.b_placeholder_1, &nn.b_assign_1)?;
+
+        // Init second layer :
+        let mut weight = Tensor::<f32>::new(&[20, 12]);
+        {
+            let mut m_w = &mut weight;
+            m_w.set(&[0, 0], 1.0);
+        }
+        nn.set_new_value(&weight, &nn.w_placeholder_2, &nn.w_assign_2)?;
+        let bias = Tensor::<f32>::new(&[1, 12]);
+        nn.set_new_value(&bias, &nn.b_placeholder_2, &nn.b_assign_2)?;
+
+        // Init output layer :
+        let mut weight = Tensor::<f32>::new(&[12, 4]);
+        {
+            let mut m_w = &mut weight;
+            m_w.set(&[0, 0], 1.0);
+        }
+        nn.set_new_value(&weight, &nn.w_placeholder_out, &nn.w_assign_out)?;
+        let bias = Tensor::<f32>::new(&[1, 4]);
+        nn.set_new_value(&bias, &nn.b_placeholder_out, &nn.b_assign_out)?;
+
+        let snake_inputs: [f32; 32] = [
+            1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0,
+            2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
+        ];
+        let output_0 = nn.compute_nn_output(&snake_inputs)?;
+        assert_eq!(output_0, [0.7310586, 0.5, 0.5, 0.5]);
+        Ok(())
     }
 
     #[test]
