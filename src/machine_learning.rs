@@ -160,11 +160,23 @@ impl SnakeNN {
             output: layer_output,
             bias_initial_value: vec![bias_hidden_1, bias_hidden_2, bias_output],
             weight_initial_value: vec![weight_hidden_1, weight_hidden_2, weight_output],
+            w_placeholder_1,
+            w_assign_1,
+            b_placeholder_1,
+            b_assign_1,
+            w_placeholder_2,
+            w_assign_2,
+            b_placeholder_2,
+            b_assign_2,
+            w_placeholder_out,
+            w_assign_out,
+            b_placeholder_out,
+            b_assign_out,
         };
         Ok(result)
     }
 
-    fn compute_nn_output(&mut self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
+    fn compute_nn_output(&self, inputs: &[f32]) -> Result<[f32; 4], Box<dyn Error>> {
         let mut input_tensor = Tensor::<f32>::new(&[1, 32]);
         for (index, input) in inputs.iter().enumerate() {
             input_tensor[index] = *input;
@@ -360,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_compute_nn_output() -> Result<(), Box<dyn Error>> {
-        let mut nn = SnakeNN::new()?;
+        let nn = SnakeNN::new()?;
         let snake_inputs: [f32; 32] = [
             1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0,
             2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
