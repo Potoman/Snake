@@ -275,15 +275,11 @@ impl OverloadedGenTensor<[u64; 2]> for TensorProvider {
 
 impl OverloadedGenTensor<Shape> for TensorProvider {
     fn overloaded_gen_tensor(&self, size: Shape) -> Result<Tensor<f32>, Box<dyn Error>> {
-        let a = size[0];
-        match a {
-            Some(v) => {
-                let b = size[1];
-                match b {
-                    Some(w) => self.overloaded_gen_tensor([v as u64, w as u64]),
-                    _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
-                }
-            }
+        match size[0] {
+            Some(v) => match size[1] {
+                Some(w) => self.overloaded_gen_tensor([v as u64, w as u64]),
+                _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
+            },
             _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
         }
     }
