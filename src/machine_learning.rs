@@ -249,8 +249,8 @@ impl TensorProvider {
     }
 }
 
-impl OverloadedGenTensor<[u64; 2]> for TensorProvider {
-    fn overloaded_gen_tensor(&self, size: [u64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
+impl OverloadedGenTensor<[i64; 2]> for TensorProvider {
+    fn overloaded_gen_tensor(&self, size: [i64; 2]) -> Result<Tensor<f32>, Box<dyn Error>> {
         let mut scope = Scope::new_root_scope();
         let mut scope_1 = scope.new_sub_scope("layer");
         let scope_1 = &mut scope_1;
@@ -277,7 +277,7 @@ impl OverloadedGenTensor<Shape> for TensorProvider {
     fn overloaded_gen_tensor(&self, size: Shape) -> Result<Tensor<f32>, Box<dyn Error>> {
         match size[0] {
             Some(v) => match size[1] {
-                Some(w) => self.overloaded_gen_tensor([v as u64, w as u64]),
+                Some(w) => self.overloaded_gen_tensor([v as i64, w as i64]),
                 _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
             },
             _ => Err(Box::new(MyError("No dimension for Shape.".into()))),
